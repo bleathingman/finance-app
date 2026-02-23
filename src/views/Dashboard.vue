@@ -1,6 +1,15 @@
 <template>
   <div class="animate-fade-in">
 
+    <!-- Notification récurrents -->
+    <transition name="slide-down">
+      <div v-if="notifRecurrents > 0" class="notif-banner">
+        <span>🔄</span>
+        <span><strong>{{ notifRecurrents }} transaction(s) récurrente(s)</strong> ont été ajoutées automatiquement pour {{ moisCourant }}.</span>
+        <button class="notif-close" @click="notifRecurrents = 0">✕</button>
+      </div>
+    </transition>
+
     <!-- Header -->
     <div class="page-header" style="display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:12px">
       <div>
@@ -10,18 +19,19 @@
       <div class="header-date">{{ dateAujourdhui }}</div>
     </div>
 
-    <!-- KPI Cards -->
+    <!-- KPI Cards avec comparaison mois précédent -->
     <div class="grid-4" style="margin-bottom:24px">
+
       <div class="card card-accent kpi-card">
         <div class="kpi-icon" style="background:rgba(0,229,160,0.15);color:var(--accent)">
           <svg width="18" height="18" viewBox="0 0 24 24" fill="none"><path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
         </div>
         <div class="kpi-label">Solde du mois</div>
-        <div class="kpi-value" :style="{ color: financeStore.solde >= 0 ? 'var(--accent)' : 'var(--red)' }">
-          {{ formatAmount(financeStore.solde) }}
+        <div class="kpi-value" :style="{ color: soldeCeMois >= 0 ? 'var(--accent)' : 'var(--red)' }">
+          {{ formatAmount(soldeCeMois) }}
         </div>
-        <div class="kpi-trend" :class="financeStore.solde >= 0 ? 'positive' : 'negative'">
-          {{ financeStore.solde >= 0 ? '↑ Positif' : '↓ Négatif' }}
+        <div class="kpi-compare" :class="deltaSolde >= 0 ? 'up' : 'down'">
+          {{ deltaSolde >= 0 ? '▲' : '▼' }} {{ formatAmount(Math.abs(deltaSolde)) }} vs mois dernier
         </div>
       </div>
 
@@ -30,8 +40,10 @@
           <svg width="18" height="18" viewBox="0 0 24 24" fill="none"><polyline points="23 6 13.5 15.5 8.5 10.5 1 18" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/><polyline points="17 6 23 6 23 12" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
         </div>
         <div class="kpi-label">Revenus</div>
-        <div class="kpi-value" style="color:var(--green)">{{ formatAmount(financeStore.totalRevenus) }}</div>
-        <div class="kpi-trend">{{ financeStore.revenus.length }} transaction(s)</div>
+        <div class="kpi-value" style="color:var(--green)">{{ formatAmount(revenusCeMois) }}</div>
+        <div class="kpi-compare" :class="deltaRevenus >= 0 ? 'up' : 'down'">
+          {{ deltaRevenus >= 0 ? '▲' : '▼' }} {{ pctChange(revenusCeMois, revenusMoisPrec) }}% vs {{ labelMoisPrec }}
+        </div>
       </div>
 
       <div class="card kpi-card">
@@ -39,8 +51,10 @@
           <svg width="18" height="18" viewBox="0 0 24 24" fill="none"><polyline points="23 18 13.5 8.5 8.5 13.5 1 6" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/><polyline points="17 18 23 18 23 12" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
         </div>
         <div class="kpi-label">Dépenses</div>
-        <div class="kpi-value" style="color:var(--red)">{{ formatAmount(financeStore.totalDepenses) }}</div>
-        <div class="kpi-trend negative">{{ financeStore.depenses.length }} transaction(s)</div>
+        <div class="kpi-value" style="color:var(--red)">{{ formatAmount(depensesCeMois) }}</div>
+        <div class="kpi-compare" :class="deltaDepenses <= 0 ? 'up' : 'down'">
+          {{ deltaDepenses >= 0 ? '▲' : '▼' }} {{ pctChange(depensesCeMois, depensesMoisPrec) }}% vs {{ labelMoisPrec }}
+        </div>
       </div>
 
       <div class="card kpi-card">
@@ -51,14 +65,52 @@
         <div class="kpi-value" :style="{ color: tauxEpargne >= 20 ? 'var(--green)' : tauxEpargne >= 10 ? 'var(--orange)' : 'var(--red)' }">
           {{ tauxEpargne }}%
         </div>
-        <div class="kpi-trend">objectif : 20%</div>
+        <div class="kpi-compare" :class="deltaTaux >= 0 ? 'up' : 'down'">
+          {{ deltaTaux >= 0 ? '▲' : '▼' }} {{ Math.abs(deltaTaux) }}pts vs {{ labelMoisPrec }}
+        </div>
+      </div>
+    </div>
+
+    <!-- Comparaison mois par mois détaillée -->
+    <div class="card" style="margin-bottom:24px">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px;flex-wrap:wrap;gap:8px">
+        <h3 style="font-family:var(--font-display)">Comparaison mois par mois</h3>
+        <div style="display:flex;gap:12px;font-size:12px;color:var(--text-muted)">
+          <span style="display:flex;align-items:center;gap:5px"><span class="dot-mois-prec"></span>{{ labelMoisPrec }}</span>
+          <span style="display:flex;align-items:center;gap:5px"><span class="dot-mois-curr"></span>{{ moisCourant }}</span>
+        </div>
+      </div>
+
+      <div class="comparaison-grid">
+        <div v-for="item in comparaisonItems" :key="item.label" class="comparaison-item">
+          <div class="comp-label">{{ item.emoji }} {{ item.label }}</div>
+          <div class="comp-bars">
+            <!-- Mois précédent -->
+            <div class="comp-bar-row">
+              <span class="comp-bar-month">{{ labelMoisPrec }}</span>
+              <div class="comp-bar-track">
+                <div class="comp-bar-fill prec" :style="{ width: item.pctPrec + '%' }"></div>
+              </div>
+              <span class="comp-bar-val">{{ formatAmount(item.valPrec) }}</span>
+            </div>
+            <!-- Mois courant -->
+            <div class="comp-bar-row">
+              <span class="comp-bar-month">Ce mois</span>
+              <div class="comp-bar-track">
+                <div class="comp-bar-fill curr" :style="{ width: item.pctCurr + '%', background: item.color }"></div>
+              </div>
+              <span class="comp-bar-val" :style="{ color: item.color }">{{ formatAmount(item.valCurr) }}</span>
+            </div>
+          </div>
+          <div class="comp-delta" :class="item.deltaPositif ? 'delta-good' : 'delta-bad'">
+            {{ item.deltaPositif ? '▲' : '▼' }} {{ Math.abs(item.deltaPct) }}%
+          </div>
+        </div>
       </div>
     </div>
 
     <!-- Graphiques -->
     <div class="grid-2" style="margin-bottom:24px">
-
-      <!-- Camembert dépenses -->
       <div class="card">
         <h3 style="font-family:var(--font-display);margin-bottom:18px">Dépenses par catégorie</h3>
         <div v-if="depensesParCat.length === 0" class="chart-empty">
@@ -69,7 +121,7 @@
           <div style="position:relative;width:150px;height:150px;flex-shrink:0">
             <canvas ref="donutRef"></canvas>
             <div class="donut-center">
-              <div style="font-family:var(--font-display);font-size:13px;font-weight:800;color:var(--text-primary)">{{ formatAmountShort(financeStore.totalDepenses) }}</div>
+              <div style="font-family:var(--font-display);font-size:13px;font-weight:800">{{ formatAmountShort(depensesCeMois) }}</div>
               <div style="font-size:10px;color:var(--text-muted)">total</div>
             </div>
           </div>
@@ -84,7 +136,6 @@
         </div>
       </div>
 
-      <!-- Courbe 30 jours -->
       <div class="card">
         <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:18px">
           <h3 style="font-family:var(--font-display)">Évolution sur 30 jours</h3>
@@ -102,10 +153,8 @@
       </div>
     </div>
 
-    <!-- Budget + Objectifs + Transactions -->
+    <!-- Budget + Objectifs -->
     <div class="grid-2" style="margin-bottom:24px">
-
-      <!-- Budgets -->
       <div class="card">
         <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">
           <h3 style="font-family:var(--font-display)">Budgets du mois</h3>
@@ -129,7 +178,6 @@
         </div>
       </div>
 
-      <!-- Objectifs -->
       <div class="card">
         <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">
           <h3 style="font-family:var(--font-display)">Objectifs d'épargne</h3>
@@ -166,23 +214,21 @@
           <router-link to="/depenses" class="btn btn-primary" style="font-size:12px;padding:6px 12px">+ Dépense</router-link>
         </div>
       </div>
-
       <div v-if="recentTransactions.length === 0" class="chart-empty" style="padding:32px">
         <span style="font-size:2.5rem">📋</span>
         <p>Aucune transaction pour l'instant</p>
-        <div style="display:flex;gap:8px;margin-top:12px">
-          <router-link to="/revenus" class="btn btn-ghost" style="font-size:13px">+ Revenu</router-link>
-          <router-link to="/depenses" class="btn btn-primary" style="font-size:13px">+ Dépense</router-link>
-        </div>
       </div>
-
       <div v-else>
         <div v-for="tx in recentTransactions" :key="tx.id + tx.type" class="tx-row">
           <div class="tx-icon" :style="{ background: tx.type === 'revenu' ? 'rgba(0,229,160,0.1)' : 'rgba(255,107,107,0.1)' }">
             {{ tx.emoji }}
+            <span v-if="tx.autoGenere" class="auto-badge" title="Généré automatiquement">🔄</span>
           </div>
           <div class="tx-main">
-            <div class="tx-desc">{{ tx.description }}</div>
+            <div class="tx-desc">
+              {{ tx.description }}
+              <span v-if="tx.autoGenere" style="font-size:11px;color:var(--blue);margin-left:6px">auto</span>
+            </div>
             <div class="tx-meta">
               <span class="badge" :style="tx.type==='revenu'?'background:rgba(0,229,160,0.12);color:var(--green)':'background:rgba(255,107,107,0.12);color:var(--red)'">
                 {{ tx.type === 'revenu' ? tx.type_ || 'Revenu' : tx.categorie }}
@@ -196,20 +242,19 @@
         </div>
       </div>
 
-      <!-- Solde récap -->
       <div v-if="recentTransactions.length > 0" class="solde-recap">
         <div class="solde-item">
           <span>Total revenus</span>
-          <span class="amount-positive">+{{ formatAmount(financeStore.totalRevenus) }}</span>
+          <span class="amount-positive">+{{ formatAmount(revenusCeMois) }}</span>
         </div>
         <div class="solde-item">
           <span>Total dépenses</span>
-          <span class="amount-negative">-{{ formatAmount(financeStore.totalDepenses) }}</span>
+          <span class="amount-negative">-{{ formatAmount(depensesCeMois) }}</span>
         </div>
         <div class="solde-item solde-final">
           <span>Solde net</span>
-          <span :class="financeStore.solde >= 0 ? 'amount-positive' : 'amount-negative'">
-            {{ financeStore.solde >= 0 ? '+' : '' }}{{ formatAmount(financeStore.solde) }}
+          <span :class="soldeCeMois >= 0 ? 'amount-positive' : 'amount-negative'">
+            {{ soldeCeMois >= 0 ? '+' : '' }}{{ formatAmount(soldeCeMois) }}
           </span>
         </div>
       </div>
@@ -223,6 +268,7 @@ import { ref, computed, onMounted, onUnmounted, watch, nextTick } from 'vue'
 import { Chart, registerables } from 'chart.js'
 import { useAuthStore } from '@/stores/auth'
 import { useFinanceStore } from '@/stores/finance'
+import { processRecurringTransactions } from '@/stores/recurring'
 
 Chart.register(...registerables)
 
@@ -230,6 +276,7 @@ const authStore    = useAuthStore()
 const financeStore = useFinanceStore()
 const donutRef     = ref(null)
 const lineRef      = ref(null)
+const notifRecurrents = ref(0)
 let donutChart = null
 let lineChart  = null
 
@@ -257,13 +304,12 @@ const userName = computed(() => {
   return u?.displayName || u?.email?.split('@')[0] || 'vous'
 })
 
-const moisCourant = computed(() =>
-  new Date().toLocaleDateString('fr-FR', { month: 'long', year: 'numeric' })
-)
+const now = new Date()
+const moisCourant = computed(() => now.toLocaleDateString('fr-FR', { month: 'long', year: 'numeric' }))
+const dateAujourdhui = computed(() => now.toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long' }))
 
-const dateAujourdhui = computed(() =>
-  new Date().toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long' })
-)
+const prevMonth = new Date(now.getFullYear(), now.getMonth() - 1, 1)
+const labelMoisPrec = prevMonth.toLocaleDateString('fr-FR', { month: 'long' })
 
 function formatAmount(n) {
   return new Intl.NumberFormat('fr-FR', { style: 'currency', currency: 'EUR' }).format(n || 0)
@@ -278,58 +324,104 @@ function formatDate(ts) {
   const d = ts.toDate ? ts.toDate() : new Date(ts)
   return d.toLocaleDateString('fr-FR', { day: '2-digit', month: 'short' })
 }
+function pctChange(curr, prev) {
+  if (!prev) return curr > 0 ? 100 : 0
+  return Math.abs(Math.round(((curr - prev) / prev) * 100))
+}
 
-// ─── Computed données ─────────────────────────────────────────────
-const hasData = computed(() =>
-  financeStore.revenus.length > 0 || financeStore.depenses.length > 0
-)
+// ─── Filtrage par mois ────────────────────────────────────────────
+function txDuMois(liste, annee, mois) {
+  return liste.filter(tx => {
+    if (!tx.createdAt) return false
+    const d = tx.createdAt.toDate ? tx.createdAt.toDate() : new Date(tx.createdAt)
+    return d.getFullYear() === annee && d.getMonth() === mois
+  })
+}
 
-const tauxEpargne = computed(() => {
-  if (!financeStore.totalRevenus) return 0
-  return Math.max(0, Math.round((financeStore.solde / financeStore.totalRevenus) * 100))
+// Mois courant
+const revenusCeMois   = computed(() => txDuMois(financeStore.revenus, now.getFullYear(), now.getMonth()).reduce((s,r) => s+r.montant, 0))
+const depensesCeMois  = computed(() => txDuMois(financeStore.depenses, now.getFullYear(), now.getMonth()).reduce((s,d) => s+d.montant, 0))
+const soldeCeMois     = computed(() => revenusCeMois.value - depensesCeMois.value)
+const tauxEpargne     = computed(() => revenusCeMois.value > 0 ? Math.max(0, Math.round((soldeCeMois.value / revenusCeMois.value) * 100)) : 0)
+
+// Mois précédent
+const revenusMoisPrec  = computed(() => txDuMois(financeStore.revenus, prevMonth.getFullYear(), prevMonth.getMonth()).reduce((s,r) => s+r.montant, 0))
+const depensesMoisPrec = computed(() => txDuMois(financeStore.depenses, prevMonth.getFullYear(), prevMonth.getMonth()).reduce((s,d) => s+d.montant, 0))
+const soldeMoisPrec    = computed(() => revenusMoisPrec.value - depensesMoisPrec.value)
+const tauxEpargneMoisPrec = computed(() => revenusMoisPrec.value > 0 ? Math.max(0, Math.round((soldeMoisPrec.value / revenusMoisPrec.value) * 100)) : 0)
+
+// Deltas
+const deltaRevenus  = computed(() => revenusCeMois.value - revenusMoisPrec.value)
+const deltaDepenses = computed(() => depensesCeMois.value - depensesMoisPrec.value)
+const deltaSolde    = computed(() => soldeCeMois.value - soldeMoisPrec.value)
+const deltaTaux     = computed(() => tauxEpargne.value - tauxEpargneMoisPrec.value)
+
+// ─── Comparaison détaillée ────────────────────────────────────────
+const comparaisonItems = computed(() => {
+  const maxRev = Math.max(revenusCeMois.value, revenusMoisPrec.value) || 1
+  const maxDep = Math.max(depensesCeMois.value, depensesMoisPrec.value) || 1
+  const maxSol = Math.max(Math.abs(soldeCeMois.value), Math.abs(soldeMoisPrec.value)) || 1
+
+  return [
+    {
+      label: 'Revenus', emoji: '💰',
+      valPrec: revenusMoisPrec.value, valCurr: revenusCeMois.value,
+      pctPrec: Math.round((revenusMoisPrec.value / maxRev) * 100),
+      pctCurr: Math.round((revenusCeMois.value / maxRev) * 100),
+      deltaPct: pctChange(revenusCeMois.value, revenusMoisPrec.value),
+      deltaPositif: revenusCeMois.value >= revenusMoisPrec.value,
+      color: 'var(--green)'
+    },
+    {
+      label: 'Dépenses', emoji: '💸',
+      valPrec: depensesMoisPrec.value, valCurr: depensesCeMois.value,
+      pctPrec: Math.round((depensesMoisPrec.value / maxDep) * 100),
+      pctCurr: Math.round((depensesCeMois.value / maxDep) * 100),
+      deltaPct: pctChange(depensesCeMois.value, depensesMoisPrec.value),
+      deltaPositif: depensesCeMois.value <= depensesMoisPrec.value, // moins de dépenses = positif
+      color: 'var(--red)'
+    },
+    {
+      label: 'Épargne', emoji: '🏦',
+      valPrec: soldeMoisPrec.value, valCurr: soldeCeMois.value,
+      pctPrec: Math.round((Math.abs(soldeMoisPrec.value) / maxSol) * 100),
+      pctCurr: Math.round((Math.abs(soldeCeMois.value) / maxSol) * 100),
+      deltaPct: pctChange(soldeCeMois.value, soldeMoisPrec.value),
+      deltaPositif: soldeCeMois.value >= soldeMoisPrec.value,
+      color: 'var(--accent)'
+    }
+  ]
 })
 
+// ─── Autres computed ──────────────────────────────────────────────
+const hasData = computed(() => financeStore.revenus.length > 0 || financeStore.depenses.length > 0)
+
 const depensesParCat = computed(() => {
+  const deps = txDuMois(financeStore.depenses, now.getFullYear(), now.getMonth())
   const map = {}
-  financeStore.depenses.forEach(d => { map[d.categorie] = (map[d.categorie] || 0) + d.montant })
-  const total = financeStore.totalDepenses || 1
+  deps.forEach(d => { map[d.categorie] = (map[d.categorie] || 0) + d.montant })
+  const total = depensesCeMois.value || 1
   return Object.entries(map)
     .map(([nom, t]) => ({ nom, total: t, pct: Math.round((t / total) * 100), color: catColor(nom), emoji: catEmoji(nom) }))
     .sort((a, b) => b.total - a.total)
 })
 
-// Données 30 derniers jours
 const donnees30j = computed(() => {
   const jours = []
   for (let i = 29; i >= 0; i--) {
-    const d = new Date()
-    d.setDate(d.getDate() - i)
-    const key = d.toLocaleDateString('fr-FR', { day: '2-digit', month: '2-digit' })
+    const d = new Date(); d.setDate(d.getDate() - i)
     const ds = d.toDateString()
-    const revenus  = financeStore.revenus.filter(r => {
-      const rd = r.createdAt?.toDate ? r.createdAt.toDate() : new Date(r.createdAt || 0)
-      return rd.toDateString() === ds
-    }).reduce((s, r) => s + r.montant, 0)
-    const depenses = financeStore.depenses.filter(dep => {
-      const dd = dep.createdAt?.toDate ? dep.createdAt.toDate() : new Date(dep.createdAt || 0)
-      return dd.toDateString() === ds
-    }).reduce((s, d) => s + d.montant, 0)
+    const key = d.toLocaleDateString('fr-FR', { day: '2-digit', month: '2-digit' })
+    const revenus  = financeStore.revenus.filter(r => { const rd = r.createdAt?.toDate ? r.createdAt.toDate() : new Date(r.createdAt||0); return rd.toDateString()===ds }).reduce((s,r)=>s+r.montant,0)
+    const depenses = financeStore.depenses.filter(r => { const rd = r.createdAt?.toDate ? r.createdAt.toDate() : new Date(r.createdAt||0); return rd.toDateString()===ds }).reduce((s,d)=>s+d.montant,0)
     jours.push({ key, revenus, depenses })
   }
   return jours
 })
 
-// Budgets avec stats
 const depenseParCat = computed(() => {
-  const now = new Date()
   const map = {}
-  financeStore.depenses.forEach(d => {
-    if (!d.createdAt) return
-    const date = d.createdAt.toDate ? d.createdAt.toDate() : new Date(d.createdAt)
-    if (date.getMonth() === now.getMonth() && date.getFullYear() === now.getFullYear()) {
-      map[d.categorie] = (map[d.categorie] || 0) + d.montant
-    }
-  })
+  txDuMois(financeStore.depenses, now.getFullYear(), now.getMonth()).forEach(d => { map[d.categorie] = (map[d.categorie] || 0) + d.montant })
   return map
 })
 
@@ -342,19 +434,13 @@ const budgetsAvecStats = computed(() =>
 )
 
 const objectifsAvecStats = computed(() =>
-  financeStore.objectifs.map(o => ({
-    ...o,
-    pct: o.montantCible > 0 ? Math.round((o.montantActuel / o.montantCible) * 100) : 0
-  }))
+  financeStore.objectifs.map(o => ({ ...o, pct: o.montantCible > 0 ? Math.round((o.montantActuel / o.montantCible) * 100) : 0 }))
 )
 
-// Transactions récentes (mix revenus + dépenses)
 const recentTransactions = computed(() => {
   const revs = financeStore.revenus.map(r => ({ ...r, type: 'revenu', emoji: typeEmoji(r.type), type_: r.type }))
   const deps = financeStore.depenses.map(d => ({ ...d, type: 'depense', emoji: catEmoji(d.categorie) }))
-  return [...revs, ...deps]
-    .sort((a, b) => (b.createdAt?.seconds || 0) - (a.createdAt?.seconds || 0))
-    .slice(0, 8)
+  return [...revs, ...deps].sort((a, b) => (b.createdAt?.seconds||0) - (a.createdAt?.seconds||0)).slice(0, 8)
 })
 
 // ─── Charts ───────────────────────────────────────────────────────
@@ -365,78 +451,30 @@ function buildDonut() {
     type: 'doughnut',
     data: {
       labels: depensesParCat.value.map(c => c.nom),
-      datasets: [{
-        data: depensesParCat.value.map(c => c.total),
-        backgroundColor: depensesParCat.value.map(c => c.color),
-        borderColor: '#12151f',
-        borderWidth: 2,
-        hoverOffset: 6
-      }]
+      datasets: [{ data: depensesParCat.value.map(c => c.total), backgroundColor: depensesParCat.value.map(c => c.color), borderColor: '#12151f', borderWidth: 2, hoverOffset: 6 }]
     },
-    options: {
-      responsive: true, maintainAspectRatio: false,
-      cutout: '70%',
-      plugins: {
-        legend: { display: false },
-        tooltip: {
-          backgroundColor: '#1a1e2e', borderColor: '#ffffff10', borderWidth: 1, padding: 10,
-          callbacks: { label: ctx => ` ${ctx.label}: ${ctx.parsed.toFixed(2)}€` }
-        }
-      }
-    }
+    options: { responsive: true, maintainAspectRatio: false, cutout: '70%', plugins: { legend: { display: false }, tooltip: { backgroundColor: '#1a1e2e', borderColor: '#ffffff10', borderWidth: 1, padding: 10, callbacks: { label: ctx => ` ${ctx.label}: ${ctx.parsed.toFixed(2)}€` } } } }
   })
 }
 
 function buildLine() {
   if (!lineRef.value) return
   if (lineChart) { lineChart.destroy(); lineChart = null }
-  // Afficher seulement 1 jour sur 3 pour lisibilité
-  const labels  = donnees30j.value.map((d, i) => i % 5 === 0 ? d.key : '')
-  const revenus  = donnees30j.value.map(d => d.revenus)
-  const depenses = donnees30j.value.map(d => d.depenses)
   lineChart = new Chart(lineRef.value, {
     type: 'bar',
     data: {
       labels: donnees30j.value.map(d => d.key),
       datasets: [
-        {
-          label: 'Revenus',
-          data: revenus,
-          backgroundColor: 'rgba(0,229,160,0.7)',
-          borderRadius: 4,
-          borderSkipped: false
-        },
-        {
-          label: 'Dépenses',
-          data: depenses,
-          backgroundColor: 'rgba(255,107,107,0.7)',
-          borderRadius: 4,
-          borderSkipped: false
-        }
+        { label: 'Revenus',  data: donnees30j.value.map(d => d.revenus),  backgroundColor: 'rgba(0,229,160,0.7)',  borderRadius: 4 },
+        { label: 'Dépenses', data: donnees30j.value.map(d => d.depenses), backgroundColor: 'rgba(255,107,107,0.7)', borderRadius: 4 }
       ]
     },
     options: {
       responsive: true, maintainAspectRatio: false,
-      plugins: {
-        legend: { display: false },
-        tooltip: {
-          backgroundColor: '#1a1e2e', borderColor: '#ffffff10', borderWidth: 1, padding: 10,
-          callbacks: { label: ctx => ` ${ctx.dataset.label}: ${ctx.parsed.y.toFixed(2)}€` }
-        }
-      },
+      plugins: { legend: { display: false }, tooltip: { backgroundColor: '#1a1e2e', borderColor: '#ffffff10', borderWidth: 1, padding: 10 } },
       scales: {
-        x: {
-          grid: { display: false },
-          ticks: {
-            color: '#8892a4', font: { size: 10 },
-            maxTicksLimit: 8,
-            callback: (val, i) => i % 5 === 0 ? donnees30j.value[i]?.key : ''
-          }
-        },
-        y: {
-          grid: { color: 'rgba(255,255,255,0.04)' },
-          ticks: { color: '#8892a4', font: { size: 10 }, callback: v => v + '€' }
-        }
+        x: { grid: { display: false }, ticks: { color: '#8892a4', font: { size: 10 }, maxTicksLimit: 8, callback: (val, i) => i % 5 === 0 ? donnees30j.value[i]?.key : '' } },
+        y: { grid: { color: 'rgba(255,255,255,0.04)' }, ticks: { color: '#8892a4', font: { size: 10 }, callback: v => v + '€' } }
       }
     }
   })
@@ -448,16 +486,25 @@ watch([depensesParCat, donnees30j], async () => {
   if (hasData.value) buildLine()
 }, { deep: true })
 
+// ─── Lifecycle ────────────────────────────────────────────────────
 let unsubs = []
 onMounted(async () => {
   unsubs.push(financeStore.ecouter_revenus())
   unsubs.push(financeStore.ecouter_depenses())
   unsubs.push(financeStore.ecouter_budgets())
   unsubs.push(financeStore.ecouter_objectifs())
+
+  // Attendre que les données soient chargées puis traiter les récurrents
+  setTimeout(async () => {
+    const nb = await processRecurringTransactions()
+    if (nb > 0) notifRecurrents.value = nb
+  }, 2000)
+
   await nextTick()
   buildDonut()
   if (hasData.value) buildLine()
 })
+
 onUnmounted(() => {
   unsubs.forEach(fn => fn && fn())
   if (donutChart) donutChart.destroy()
@@ -466,28 +513,47 @@ onUnmounted(() => {
 </script>
 
 <style scoped>
-/* Header */
-.header-date {
-  font-size:13px;color:var(--text-muted);
-  background:var(--bg-surface);border:1px solid var(--border);
-  border-radius:var(--radius);padding:8px 14px;
-  text-transform:capitalize;
+/* Notif */
+.notif-banner {
+  display:flex;align-items:center;gap:10px;
+  padding:12px 18px;margin-bottom:20px;
+  background:rgba(79,172,254,0.1);border:1px solid rgba(79,172,254,0.25);
+  border-radius:var(--radius);font-size:14px;color:var(--text-primary);
 }
+.notif-close { margin-left:auto;background:none;border:none;cursor:pointer;color:var(--text-muted);font-size:14px }
+
+/* Header */
+.header-date { font-size:13px;color:var(--text-muted);background:var(--bg-surface);border:1px solid var(--border);border-radius:var(--radius);padding:8px 14px;text-transform:capitalize }
 
 /* KPI */
-.kpi-card  { display:flex;flex-direction:column;gap:4px;position:relative;overflow:hidden }
-.kpi-icon  { width:36px;height:36px;border-radius:10px;display:flex;align-items:center;justify-content:center;margin-bottom:8px }
-.kpi-label { font-size:12px;color:var(--text-secondary);font-weight:500;text-transform:uppercase;letter-spacing:0.05em }
-.kpi-value { font-family:var(--font-display);font-size:1.7rem;font-weight:800;line-height:1.1 }
-.kpi-trend { font-size:12px;color:var(--text-muted);margin-top:2px }
-.kpi-trend.positive { color:var(--green) }
-.kpi-trend.negative { color:var(--red) }
+.kpi-card    { display:flex;flex-direction:column;gap:4px }
+.kpi-icon    { width:36px;height:36px;border-radius:10px;display:flex;align-items:center;justify-content:center;margin-bottom:8px }
+.kpi-label   { font-size:12px;color:var(--text-secondary);font-weight:500;text-transform:uppercase;letter-spacing:0.05em }
+.kpi-value   { font-family:var(--font-display);font-size:1.7rem;font-weight:800;line-height:1.1 }
+.kpi-compare { font-size:12px;margin-top:3px;color:var(--text-muted) }
+.kpi-compare.up   { color:var(--green) }
+.kpi-compare.down { color:var(--red) }
+
+/* Comparaison */
+.comparaison-grid { display:grid;grid-template-columns:repeat(3,1fr);gap:20px }
+.comparaison-item { display:flex;flex-direction:column;gap:10px }
+.comp-label { font-size:13px;font-weight:600 }
+.comp-bars  { display:flex;flex-direction:column;gap:6px }
+.comp-bar-row { display:grid;grid-template-columns:52px 1fr 70px;align-items:center;gap:8px }
+.comp-bar-month { font-size:11px;color:var(--text-muted);white-space:nowrap }
+.comp-bar-track { height:7px;background:var(--bg-elevated);border-radius:99px;overflow:hidden }
+.comp-bar-fill  { height:100%;border-radius:99px;transition:width 0.8s ease }
+.comp-bar-fill.prec { background:var(--bg-hover) }
+.comp-bar-val   { font-size:12px;font-weight:600;text-align:right }
+.comp-delta { font-size:12px;font-weight:700;padding:3px 8px;border-radius:99px;width:fit-content }
+.delta-good { background:rgba(0,229,160,0.1);color:var(--green) }
+.delta-bad  { background:rgba(255,107,107,0.1);color:var(--red) }
+
+.dot-mois-prec { display:inline-block;width:8px;height:8px;border-radius:50%;background:var(--bg-hover) }
+.dot-mois-curr { display:inline-block;width:8px;height:8px;border-radius:50%;background:var(--accent) }
 
 /* Donut */
-.donut-center {
-  position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);
-  text-align:center;pointer-events:none;
-}
+.donut-center { position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);text-align:center;pointer-events:none }
 
 /* Légende */
 .legend-row    { display:flex;align-items:center;gap:6px;font-size:12px }
@@ -500,17 +566,17 @@ onUnmounted(() => {
 .chart-empty { display:flex;flex-direction:column;align-items:center;gap:6px;padding:24px;color:var(--text-muted);font-size:14px;text-align:center }
 .chart-empty span { font-size:2rem }
 
-/* Budget list */
-.budget-list { display:flex;flex-direction:column;gap:10px }
-.budget-row  { display:grid;grid-template-columns:1fr auto 36px;align-items:center;gap:8px }
-.budget-row-info { display:flex;justify-content:space-between;font-size:13px;font-weight:500;grid-column:1/-1 }
+/* Budget */
+.budget-list      { display:flex;flex-direction:column;gap:10px }
+.budget-row       { display:grid;grid-template-columns:1fr auto 36px;align-items:center;gap:8px }
+.budget-row-info  { display:flex;justify-content:space-between;font-size:13px;font-weight:500;grid-column:1/-1 }
 .budget-bar-track { height:5px;background:var(--bg-elevated);border-radius:99px;overflow:hidden }
 .budget-bar-fill  { height:100%;border-radius:99px;transition:width 0.8s ease }
-.budget-pct { font-size:11px;font-weight:700;text-align:right }
+.budget-pct       { font-size:11px;font-weight:700;text-align:right }
 
-/* Objectifs list */
-.objectifs-list { display:flex;flex-direction:column;gap:12px }
-.objectif-row   { display:flex;align-items:center;gap:12px }
+/* Objectifs */
+.objectifs-list     { display:flex;flex-direction:column;gap:12px }
+.objectif-row       { display:flex;align-items:center;gap:12px }
 .objectif-row-emoji { width:36px;height:36px;border-radius:9px;display:flex;align-items:center;justify-content:center;font-size:18px;flex-shrink:0 }
 .objectif-row-info  { flex:1;min-width:0 }
 .obj-bar-track { height:5px;background:var(--bg-elevated);border-radius:99px;overflow:hidden }
@@ -519,13 +585,22 @@ onUnmounted(() => {
 /* Transactions */
 .tx-row   { display:flex;align-items:center;gap:12px;padding:12px 0;border-bottom:1px solid var(--border) }
 .tx-row:last-of-type { border-bottom:none }
-.tx-icon  { width:38px;height:38px;border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:18px;flex-shrink:0 }
+.tx-icon  { width:38px;height:38px;border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:18px;flex-shrink:0;position:relative }
+.auto-badge { position:absolute;bottom:-4px;right:-4px;font-size:10px }
 .tx-main  { flex:1;min-width:0 }
 .tx-desc  { font-size:14px;font-weight:500;margin-bottom:3px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis }
 .tx-meta  { display:flex;align-items:center;gap:6px }
 
 /* Solde récap */
-.solde-recap { margin-top:16px;padding:16px;background:var(--bg-elevated);border-radius:var(--radius);display:flex;flex-direction:column;gap:8px }
-.solde-item  { display:flex;justify-content:space-between;align-items:center;font-size:14px;color:var(--text-secondary) }
+.solde-recap  { margin-top:16px;padding:16px;background:var(--bg-elevated);border-radius:var(--radius);display:flex;flex-direction:column;gap:8px }
+.solde-item   { display:flex;justify-content:space-between;align-items:center;font-size:14px;color:var(--text-secondary) }
 .solde-item.solde-final { padding-top:8px;border-top:1px solid var(--border);font-weight:700;color:var(--text-primary);font-size:15px }
+
+/* Animations */
+.slide-down-enter-active,.slide-down-leave-active { transition:all 0.3s ease }
+.slide-down-enter-from,.slide-down-leave-to { opacity:0;transform:translateY(-12px) }
+
+@media (max-width:768px) {
+  .comparaison-grid { grid-template-columns:1fr }
+}
 </style>

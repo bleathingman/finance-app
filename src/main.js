@@ -5,15 +5,17 @@ import { auth } from '@/firebase/config'
 import App from './App.vue'
 import router from './router'
 import './assets/main.css'
+import { inject } from '@vercel/speed-insights'
+
+// Vercel Speed Insights
+inject()
 
 const pinia = createPinia()
-const app = createApp(App)
+const app   = createApp(App)
 
 app.use(pinia)
 app.use(router)
 
-// Attendre que Firebase confirme l'état auth avant de monter l'app
-// Évite le flash de redirection non désiré
 let appMounted = false
 onAuthStateChanged(auth, () => {
   if (!appMounted) {
