@@ -480,45 +480,23 @@ onUnmounted(() => {
 .kpi-value { font-family:var(--font-display);font-size:1.9rem;font-weight:700;margin-bottom:4px }
 .kpi-sub   { font-size:13px;color:var(--text-muted) }
 
-/* Period tabs */
 .period-tabs { display:flex;gap:6px;background:var(--bg-surface);border:1px solid var(--border);border-radius:var(--radius);padding:4px;width:fit-content }
 .period-btn  { padding:7px 18px;border-radius:8px;border:none;background:none;color:var(--text-secondary);font-size:13px;font-weight:500;cursor:pointer;font-family:var(--font-body);transition:all var(--transition) }
 .period-btn.active { background:var(--accent-dim);color:var(--accent);border:1px solid var(--border-accent) }
 .period-btn:hover:not(.active) { color:var(--text-primary) }
 
-/* Empty chart */
 .empty-chart { display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px;padding:32px;color:var(--text-muted);font-size:14px;min-height:160px }
 
-/* Bilan table */
-.bilan-table { display:flex;flex-direction:column;gap:0 }
-.bilan-header {
-  display:grid;grid-template-columns:120px 1fr 1fr 1fr 200px;
-  gap:12px;padding:10px 12px;
-  font-size:12px;font-weight:600;color:var(--text-muted);letter-spacing:0.05em;text-transform:uppercase;
-  border-bottom:1px solid var(--border);
-}
-.bilan-row {
-  display:grid;grid-template-columns:120px 1fr 1fr 1fr 200px;
-  gap:12px;padding:12px 12px;
-  font-size:14px;align-items:center;
-  border-bottom:1px solid var(--border);transition:background var(--transition);
-}
+.bilan-table { display:flex;flex-direction:column }
+.bilan-header { display:grid;grid-template-columns:120px 1fr 1fr 1fr 200px;gap:12px;padding:10px 12px;font-size:12px;font-weight:600;color:var(--text-muted);letter-spacing:0.05em;text-transform:uppercase;border-bottom:1px solid var(--border) }
+.bilan-row    { display:grid;grid-template-columns:120px 1fr 1fr 1fr 200px;gap:12px;padding:12px;font-size:14px;align-items:center;border-bottom:1px solid var(--border);transition:background var(--transition) }
 .bilan-row:last-child { border-bottom:none }
 .bilan-row:hover { background:var(--bg-elevated);border-radius:var(--radius) }
-.bilan-mois { font-weight:600;color:var(--text-primary) }
+.bilan-mois { font-weight:600 }
 .bilan-progress { display:flex;align-items:center;gap:8px }
-.bilan-bar-track-outer { flex:1;height:6px;background:var(--bg-elevated);border-radius:99px;overflow:hidden }
-.bilan-bar { height:6px;border-radius:99px;transition:width 0.6s ease }
-.bilan-pct { font-size:12px;font-weight:700;min-width:36px;text-align:right }
+.bilan-bar  { height:6px;border-radius:99px;transition:width 0.6s ease }
+.bilan-pct  { font-size:12px;font-weight:700;min-width:36px;text-align:right }
 
-@media (max-width:768px) {
-  .bilan-header { display:none }
-  .bilan-row    { grid-template-columns:1fr 1fr;gap:8px }
-  .bilan-mois   { grid-column:1/-1;font-size:15px }
-  .bilan-progress { grid-column:1/-1 }
-}
-
-/* Projections */
 .projection-row { display:flex;align-items:center;gap:10px;margin-bottom:12px }
 .projection-label { font-size:13px;color:var(--text-secondary);width:60px;flex-shrink:0 }
 .projection-bar-wrap { flex:1 }
@@ -527,7 +505,6 @@ onUnmounted(() => {
 .projection-amount { font-size:13px;font-weight:600;color:var(--accent);min-width:90px;text-align:right;flex-shrink:0 }
 .projection-total  { display:flex;justify-content:space-between;align-items:center;padding:16px;background:var(--accent-dim);border:1px solid var(--border-accent);border-radius:var(--radius);margin-top:16px;font-size:14px }
 
-/* Insights */
 .insights-list { display:flex;flex-direction:column;gap:10px }
 .insight-item  { display:flex;gap:12px;padding:14px;border-radius:var(--radius);border:1px solid }
 .insight-item.good { background:rgba(0,229,160,0.06);border-color:rgba(0,229,160,0.2) }
@@ -538,7 +515,6 @@ onUnmounted(() => {
 .insight-title { font-size:13px;font-weight:700;margin-bottom:2px }
 .insight-text  { font-size:13px;color:var(--text-secondary);line-height:1.4 }
 
-@media print {
-  .btn { display:none }
-}
+@media (max-width:768px) { .bilan-header { display:none } .bilan-row { grid-template-columns:1fr 1fr;gap:8px } .bilan-mois { grid-column:1/-1;font-size:15px } .bilan-progress { grid-column:1/-1 } }
+@media print { .btn { display:none } }
 </style>

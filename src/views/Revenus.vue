@@ -1,7 +1,6 @@
 <template>
   <div class="animate-fade-in">
 
-    <!-- Header -->
     <div class="page-header" style="display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:16px">
       <div>
         <h1>Revenus</h1>
@@ -16,22 +15,27 @@
       </button>
     </div>
 
-    <!-- KPI Cards -->
-    <div class="grid-3" style="margin-bottom:28px">
+    <!-- KPIs -->
+    <div class="grid-4" style="margin-bottom:28px">
       <div class="card card-accent">
         <div class="kpi-label">Total du mois</div>
-        <div class="kpi-value text-accent">{{ formatAmount(totalMois) }}</div>
-        <div class="kpi-sub">{{ nbTotal }} entrée(s) ce mois</div>
+        <div class="kpi-value text-accent">{{ formatAmount(financeStore.totalRevenus) }}</div>
+        <div class="kpi-sub">{{ financeStore.revenus.length }} transaction(s)</div>
       </div>
       <div class="card">
-        <div class="kpi-label">Revenus récurrents</div>
+        <div class="kpi-label">Récurrents</div>
         <div class="kpi-value">{{ formatAmount(totalRecurrents) }}</div>
-        <div class="kpi-sub">{{ nbRecurrents }} source(s) stable(s)</div>
+        <div class="kpi-sub">{{ nbRecurrents }} source(s)</div>
       </div>
       <div class="card">
-        <div class="kpi-label">Revenus ponctuels</div>
+        <div class="kpi-label">Ponctuels</div>
         <div class="kpi-value">{{ formatAmount(totalPonctuels) }}</div>
-        <div class="kpi-sub">{{ nbPonctuels }} entrée(s) ponctuelle(s)</div>
+        <div class="kpi-sub">{{ nbPonctuels }} transaction(s)</div>
+      </div>
+      <div class="card">
+        <div class="kpi-label">Plus grosse source</div>
+        <div class="kpi-value" style="font-size:1.2rem">{{ plusGros?.description || '—' }}</div>
+        <div class="kpi-sub">{{ plusGros ? formatAmount(plusGros.montant) : '—' }}</div>
       </div>
     </div>
 
@@ -39,23 +43,23 @@
     <div class="grid-2" style="margin-bottom:28px">
       <div class="card">
         <h3 style="font-family:var(--font-display);margin-bottom:20px">Répartition par type</h3>
-        <div v-if="categoriesStats.length === 0" class="empty-state-small">
+        <div v-if="!financeStore.revenus.length" class="empty-state">
           <p>Aucun revenu enregistré</p>
         </div>
-        <div v-else class="category-bars">
-          <div v-for="cat in categoriesStats" :key="cat.type" class="category-row">
-            <div class="cat-header">
-              <div class="cat-info">
-                <span class="cat-emoji">{{ cat.emoji }}</span>
-                <span class="cat-name">{{ cat.type }}</span>
+        <div v-else class="type-bars">
+          <div v-for="t in typesStats" :key="t.nom" class="type-row">
+            <div class="type-header">
+              <div style="display:flex;align-items:center;gap:8px">
+                <span>{{ t.emoji }}</span>
+                <span style="font-size:14px;font-weight:500">{{ t.nom }}</span>
               </div>
-              <div class="cat-amounts">
-                <span class="cat-amount">{{ formatAmount(cat.total) }}</span>
-                <span class="cat-pct">{{ cat.pct }}%</span>
+              <div style="display:flex;align-items:center;gap:10px">
+                <span style="font-size:14px;font-weight:600">{{ formatAmount(t.total) }}</span>
+                <span style="font-size:12px;font-weight:600;min-width:36px;text-align:right" :style="{ color: t.pct > 50 ? 'var(--accent)' : 'var(--text-muted)' }">{{ t.pct }}%</span>
               </div>
             </div>
             <div class="bar-track">
-              <div class="bar-fill" :style="{ width: cat.pct + '%', background: cat.color }"></div>
+              <div class="bar-fill" :style="{ width: t.pct + '%', background: t.color }"></div>
             </div>
           </div>
         </div>
@@ -63,19 +67,19 @@
 
       <div class="card">
         <h3 style="font-family:var(--font-display);margin-bottom:20px">Sources récurrentes</h3>
-        <div v-if="recurringItems.length === 0" class="empty-state-small">
-          <span style="font-size:1.5rem">🔄</span>
-          <p>Aucun revenu récurrent configuré</p>
+        <div v-if="!recurrents.length" class="empty-state">
+          <span style="font-size:2rem">💼</span>
+          <p>Aucune source récurrente</p>
           <button class="btn btn-ghost" style="font-size:13px;margin-top:8px" @click="showModal = true">+ Ajouter</button>
         </div>
         <div v-else class="recurring-list">
-          <div v-for="r in recurringItems" :key="r.id" class="recurring-item">
+          <div v-for="r in recurrents" :key="r.id" class="recurring-item">
             <div class="recurring-icon" :style="{ background: typeColor(r.type) + '20' }">{{ typeEmoji(r.type) }}</div>
             <div class="recurring-info">
               <span class="recurring-name">{{ r.description }}</span>
-              <span class="recurring-type">{{ r.type }}</span>
+              <span class="recurring-sub">{{ r.type }}</span>
             </div>
-            <div class="recurring-amount amount-positive">+{{ formatAmount(r.montant) }}</div>
+            <span class="amount-positive">+{{ formatAmount(r.montant) }}</span>
           </div>
         </div>
       </div>
@@ -88,7 +92,7 @@
         <div style="display:flex;gap:8px;flex-wrap:wrap">
           <select v-model="filtreType" class="input" style="width:auto;padding:8px 12px;font-size:13px">
             <option value="">Tous les types</option>
-            <option v-for="t in typeOptions" :key="t.value" :value="t.value">{{ t.label }}</option>
+            <option v-for="t in types" :key="t.nom" :value="t.nom">{{ t.emoji }} {{ t.nom }}</option>
           </select>
           <select v-model="filtreRecurrence" class="input" style="width:auto;padding:8px 12px;font-size:13px">
             <option value="">Tous</option>
@@ -105,41 +109,37 @@
         </div>
       </div>
 
-      <div v-if="revenusFiltres.length === 0" class="empty-history">
-        <div style="font-size:2.5rem;margin-bottom:12px">🪹</div>
-        <h3>Aucun revenu trouvé</h3>
-        <p>{{ financeStore.revenus.length === 0 ? 'Commencez par ajouter votre premier revenu.' : 'Modifiez vos filtres.' }}</p>
-        <button v-if="financeStore.revenus.length === 0" class="btn btn-primary" style="margin-top:16px" @click="showModal = true">
-          + Ajouter un revenu
-        </button>
+      <div v-if="!revenusFiltres.length" class="empty-history">
+        <div style="font-size:2.5rem;margin-bottom:12px">💰</div>
+        <h3>{{ !financeStore.revenus.length ? 'Aucun revenu enregistré' : 'Aucun résultat' }}</h3>
+        <p>{{ !financeStore.revenus.length ? 'Commencez par ajouter votre premier revenu.' : 'Modifiez vos filtres.' }}</p>
+        <button v-if="!financeStore.revenus.length" class="btn btn-primary" style="margin-top:16px" @click="showModal = true">+ Ajouter</button>
       </div>
 
-      <div v-else class="transactions-list">
-        <div v-for="revenu in revenusFiltres" :key="revenu.id" class="transaction-row">
-          <div class="tx-icon" :style="{ background: typeColor(revenu.type) + '18' }">{{ typeEmoji(revenu.type) }}</div>
+      <div v-else>
+        <div v-for="r in revenusFiltres" :key="r.id" class="tx-row">
+          <div class="tx-icon" :style="{ background: typeColor(r.type) + '18' }">{{ typeEmoji(r.type) }}</div>
           <div class="tx-main">
-            <div class="tx-desc">{{ revenu.description }}</div>
+            <div class="tx-desc">{{ r.description }}</div>
             <div class="tx-meta">
-              <span class="badge" :style="{ background: typeColor(revenu.type) + '18', color: typeColor(revenu.type) }">{{ revenu.type }}</span>
-              <span v-if="revenu.recurrent" class="badge badge-blue">🔄 Récurrent</span>
-              <span class="tx-date">{{ formatDate(revenu.createdAt) }}</span>
+              <span class="badge" :style="{ background: typeColor(r.type) + '18', color: typeColor(r.type) }">{{ r.type }}</span>
+              <span v-if="r.recurrent" class="badge badge-blue">🔄 Récurrent</span>
+              <span v-if="r.autoGenere" class="badge badge-blue">🤖 Auto</span>
+              <span style="font-size:12px;color:var(--text-muted)">{{ formatDate(r.createdAt) }}</span>
             </div>
           </div>
-          <div class="tx-amount amount-positive">+{{ formatAmount(revenu.montant) }}</div>
-          <div class="tx-actions">
-            <button class="icon-btn danger" @click="supprimerRevenu(revenu.id)" title="Supprimer">
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none">
-                <polyline points="3 6 5 6 21 6" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
-                <path d="M19 6l-1 14H6L5 6M10 11v6M14 11v6M9 6V4h6v2" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-              </svg>
-            </button>
-          </div>
+          <div class="amount-positive" style="font-size:15px;flex-shrink:0">+{{ formatAmount(r.montant) }}</div>
+          <button class="icon-btn danger" @click="financeStore.supprimerRevenu(r.id)">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none">
+              <polyline points="3 6 5 6 21 6" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+              <path d="M19 6l-1 14H6L5 6M10 11v6M14 11v6M9 6V4h6v2" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+          </button>
         </div>
-      </div>
-
-      <div v-if="revenusFiltres.length > 0" class="list-footer">
-        <span style="color:var(--text-muted);font-size:14px">{{ revenusFiltres.length }} résultat(s)</span>
-        <span class="amount-positive" style="font-size:15px;font-weight:700">Total : +{{ formatAmount(totalFiltres) }}</span>
+        <div class="list-footer">
+          <span style="color:var(--text-muted);font-size:14px">{{ revenusFiltres.length }} résultat(s)</span>
+          <span class="amount-positive" style="font-size:15px;font-weight:700">Total : +{{ formatAmount(totalFiltres) }}</span>
+        </div>
       </div>
     </div>
 
@@ -160,16 +160,19 @@
             <form @submit.prevent="handleAjouter" class="modal-body">
               <div class="form-group">
                 <label>Type de revenu</label>
-                <div class="type-selector">
-                  <button v-for="t in typeOptions" :key="t.value" type="button" class="type-btn" :class="{ active: form.type === t.value }" @click="form.type = t.value">
-                    <span>{{ t.emoji }}</span>
-                    <span>{{ t.label }}</span>
+                <div class="cat-selector">
+                  <button v-for="t in types" :key="t.nom" type="button" class="cat-btn"
+                    :class="{ active: form.type === t.nom }"
+                    :style="form.type === t.nom ? { background: t.color+'20', borderColor: t.color, color: t.color } : {}"
+                    @click="form.type = t.nom">
+                    <span style="font-size:18px">{{ t.emoji }}</span>
+                    <span>{{ t.nom }}</span>
                   </button>
                 </div>
               </div>
               <div class="form-group">
                 <label>Description</label>
-                <input v-model="form.description" type="text" class="input" placeholder="Ex: Salaire Mars, Mission freelance..." required/>
+                <input v-model="form.description" type="text" class="input" placeholder="Ex: Salaire novembre..." required />
               </div>
               <div class="form-group">
                 <label>Montant (€)</label>
@@ -179,8 +182,8 @@
                 </div>
               </div>
               <div class="form-group">
-                <label>Date de réception</label>
-                <input v-model="form.date" type="date" class="input" required/>
+                <label>Date</label>
+                <input v-model="form.date" type="date" class="input" required />
               </div>
               <div class="toggle-row">
                 <div>
@@ -199,7 +202,7 @@
                 <button type="button" class="btn btn-ghost" @click="closeModal">Annuler</button>
                 <button type="submit" class="btn btn-primary" :disabled="submitting">
                   <div v-if="submitting" class="spinner" style="width:16px;height:16px;border-width:2px"></div>
-                  <span v-else>Ajouter le revenu</span>
+                  <span v-else>Ajouter</span>
                 </button>
               </div>
             </form>
@@ -207,7 +210,6 @@
         </div>
       </transition>
     </teleport>
-
   </div>
 </template>
 
@@ -216,50 +218,54 @@ import { ref, computed, onMounted, onUnmounted } from 'vue'
 import { useFinanceStore } from '@/stores/finance'
 
 const financeStore = useFinanceStore()
-
-const showModal  = ref(false)
-const submitting = ref(false)
-const filtreType = ref('')
+const showModal    = ref(false)
+const submitting   = ref(false)
+const filtreType       = ref('')
 const filtreRecurrence = ref('')
-const recherche  = ref('')
+const recherche        = ref('')
 
-const form = ref({
-  type: 'Salaire',
-  description: '',
-  montant: null,
-  date: new Date().toISOString().split('T')[0],
-  recurrent: false
-})
-
-const typeOptions = [
-  { value: 'Salaire',         label: 'Salaire',   emoji: '💼' },
-  { value: 'Freelance',       label: 'Freelance',  emoji: '🧑‍💻' },
-  { value: 'Revenus passifs', label: 'Passifs',    emoji: '📈' },
-  { value: 'Autres',          label: 'Autres',     emoji: '💡' }
+const types = [
+  { nom: 'Salaire',         emoji: '💼', color: '#00e5a0' },
+  { nom: 'Freelance',       emoji: '🧑‍💻', color: '#4facfe' },
+  { nom: 'Revenus passifs', emoji: '📈', color: '#ff9f43' },
+  { nom: 'Autres',          emoji: '💡', color: '#c084fc' }
 ]
 
-const typeColors = { 'Salaire': '#00e5a0', 'Freelance': '#4facfe', 'Revenus passifs': '#ff9f43', 'Autres': '#c084fc' }
+const defaultForm = () => ({
+  type: 'Salaire', description: '', montant: null,
+  date: new Date().toISOString().split('T')[0], recurrent: false
+})
+const form = ref(defaultForm())
 
-function typeColor(type) { return typeColors[type] || '#8892a4' }
-function typeEmoji(type) { return typeOptions.find(t => t.value === type)?.emoji || '💰' }
+function typeColor(nom) { return types.find(t => t.nom === nom)?.color || '#94a3b8' }
+function typeEmoji(nom) { return types.find(t => t.nom === nom)?.emoji || '💰' }
 
-const moisCourant   = computed(() => new Date().toLocaleDateString('fr-FR', { month: 'long', year: 'numeric' }))
-const totalMois     = computed(() => financeStore.revenus.reduce((s, r) => s + r.montant, 0))
-const nbTotal       = computed(() => financeStore.revenus.length)
-const recurringItems= computed(() => financeStore.revenus.filter(r => r.recurrent))
-const totalRecurrents = computed(() => recurringItems.value.reduce((s, r) => s + r.montant, 0))
-const nbRecurrents  = computed(() => recurringItems.value.length)
-const totalPonctuels= computed(() => totalMois.value - totalRecurrents.value)
-const nbPonctuels   = computed(() => financeStore.revenus.filter(r => !r.recurrent).length)
+function formatAmount(n) {
+  return new Intl.NumberFormat('fr-FR', { style: 'currency', currency: 'EUR' }).format(n || 0)
+}
+function formatDate(ts) {
+  if (!ts) return ''
+  const d = ts.toDate ? ts.toDate() : new Date(ts)
+  return d.toLocaleDateString('fr-FR', { day: '2-digit', month: 'short', year: 'numeric' })
+}
 
-const categoriesStats = computed(() => {
+const moisCourant    = computed(() => new Date().toLocaleDateString('fr-FR', { month: 'long', year: 'numeric' }))
+const recurrents     = computed(() => financeStore.revenus.filter(r => r.recurrent))
+const totalRecurrents= computed(() => recurrents.value.reduce((s, r) => s + r.montant, 0))
+const nbRecurrents   = computed(() => recurrents.value.length)
+const ponctuels      = computed(() => financeStore.revenus.filter(r => !r.recurrent))
+const totalPonctuels = computed(() => ponctuels.value.reduce((s, r) => s + r.montant, 0))
+const nbPonctuels    = computed(() => ponctuels.value.length)
+const plusGros       = computed(() => [...financeStore.revenus].sort((a, b) => b.montant - a.montant)[0])
+
+const typesStats = computed(() => {
   if (!financeStore.revenus.length) return []
   const map = {}
   financeStore.revenus.forEach(r => { map[r.type] = (map[r.type] || 0) + r.montant })
-  const total = totalMois.value || 1
-  return Object.entries(map).map(([type, t]) => ({
-    type, total: t, pct: Math.round((t / total) * 100),
-    emoji: typeEmoji(type), color: typeColor(type)
+  const total = financeStore.totalRevenus || 1
+  return Object.entries(map).map(([nom, t]) => ({
+    nom, total: t, pct: Math.round((t / total) * 100),
+    emoji: typeEmoji(nom), color: typeColor(nom)
   })).sort((a, b) => b.total - a.total)
 })
 
@@ -272,41 +278,17 @@ const revenusFiltres = computed(() =>
     return true
   })
 )
-
 const totalFiltres = computed(() => revenusFiltres.value.reduce((s, r) => s + r.montant, 0))
 
-function formatAmount(n) {
-  return new Intl.NumberFormat('fr-FR', { style: 'currency', currency: 'EUR' }).format(n || 0)
-}
-
-function formatDate(ts) {
-  if (!ts) return ''
-  const d = ts.toDate ? ts.toDate() : new Date(ts)
-  return d.toLocaleDateString('fr-FR', { day: '2-digit', month: 'short', year: 'numeric' })
-}
-
-function closeModal() {
-  showModal.value = false
-  form.value = { type: 'Salaire', description: '', montant: null, date: new Date().toISOString().split('T')[0], recurrent: false }
-}
+function closeModal() { showModal.value = false; form.value = defaultForm() }
 
 async function handleAjouter() {
   if (!form.value.montant || form.value.montant <= 0) return
   submitting.value = true
   try {
-    await financeStore.ajouterRevenu({
-      type: form.value.type, description: form.value.description,
-      montant: form.value.montant, date: form.value.date, recurrent: form.value.recurrent
-    })
+    await financeStore.ajouterRevenu({ ...form.value })
     closeModal()
-  } finally {
-    submitting.value = false
-  }
-}
-
-async function supprimerRevenu(id) {
-  if (!confirm('Supprimer ce revenu ?')) return
-  await financeStore.supprimerRevenu(id)
+  } finally { submitting.value = false }
 }
 
 let unsub
@@ -319,68 +301,32 @@ onUnmounted(() => { if (unsub) unsub() })
 .kpi-value { font-family:var(--font-display);font-size:1.9rem;font-weight:700;margin-bottom:4px }
 .kpi-sub   { font-size:13px;color:var(--text-muted) }
 
-.category-bars { display:flex;flex-direction:column;gap:16px }
-.category-row  { display:flex;flex-direction:column;gap:6px }
-.cat-header    { display:flex;justify-content:space-between;align-items:center }
-.cat-info      { display:flex;align-items:center;gap:8px }
-.cat-emoji     { font-size:16px }
-.cat-name      { font-size:14px;font-weight:500 }
-.cat-amounts   { display:flex;align-items:center;gap:10px }
-.cat-amount    { font-size:14px;font-weight:600 }
-.cat-pct       { font-size:12px;color:var(--text-muted);min-width:36px;text-align:right }
-.bar-track     { height:6px;background:var(--bg-elevated);border-radius:99px;overflow:hidden }
-.bar-fill      { height:100%;border-radius:99px;transition:width 0.8s cubic-bezier(0.4,0,0.2,1) }
+.type-bars { display:flex;flex-direction:column;gap:16px }
+.type-row  { display:flex;flex-direction:column;gap:6px }
+.type-header { display:flex;justify-content:space-between;align-items:center }
+.bar-track { height:6px;background:var(--bg-elevated);border-radius:99px;overflow:hidden }
+.bar-fill  { height:100%;border-radius:99px;transition:width 0.8s cubic-bezier(0.4,0,0.2,1) }
 
 .recurring-list { display:flex;flex-direction:column;gap:10px }
 .recurring-item { display:flex;align-items:center;gap:12px;padding:10px;background:var(--bg-elevated);border-radius:var(--radius) }
 .recurring-icon { width:36px;height:36px;border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:16px;flex-shrink:0 }
 .recurring-info { flex:1;min-width:0 }
 .recurring-name { display:block;font-size:14px;font-weight:500 }
-.recurring-type { display:block;font-size:12px;color:var(--text-muted) }
-.recurring-amount { font-size:14px;flex-shrink:0 }
+.recurring-sub  { display:block;font-size:12px;color:var(--text-muted) }
 
-.transactions-list { display:flex;flex-direction:column }
-.transaction-row { display:flex;align-items:center;gap:12px;padding:14px 0;border-bottom:1px solid var(--border) }
-.transaction-row:last-child { border-bottom:none }
+.tx-row   { display:flex;align-items:center;gap:12px;padding:14px 0;border-bottom:1px solid var(--border) }
+.tx-row:last-child { border-bottom:none }
 .tx-icon  { width:40px;height:40px;border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:18px;flex-shrink:0 }
 .tx-main  { flex:1;min-width:0 }
 .tx-desc  { font-size:14px;font-weight:500;margin-bottom:4px }
 .tx-meta  { display:flex;align-items:center;gap:6px;flex-wrap:wrap }
-.tx-date  { font-size:12px;color:var(--text-muted) }
-.tx-amount{ font-size:15px;font-weight:700;flex-shrink:0 }
-.tx-actions{ flex-shrink:0 }
 
 .list-footer { display:flex;justify-content:space-between;align-items:center;padding-top:16px;margin-top:8px;border-top:1px solid var(--border) }
 
-.icon-btn { width:32px;height:32px;display:flex;align-items:center;justify-content:center;background:none;border:1px solid var(--border);border-radius:8px;cursor:pointer;color:var(--text-muted);transition:all var(--transition) }
-.icon-btn:hover { background:var(--bg-elevated);color:var(--text-primary) }
-.icon-btn.danger:hover { background:rgba(255,107,107,0.1);color:var(--red);border-color:rgba(255,107,107,0.3) }
-
-.empty-state-small { display:flex;flex-direction:column;align-items:center;gap:8px;padding:24px;text-align:center;color:var(--text-muted);font-size:14px }
+.empty-state { display:flex;flex-direction:column;align-items:center;gap:8px;padding:24px;text-align:center;color:var(--text-muted);font-size:14px }
 .empty-history { display:flex;flex-direction:column;align-items:center;padding:48px;text-align:center;gap:8px }
 .empty-history h3 { font-family:var(--font-display) }
 .empty-history p  { color:var(--text-muted);font-size:14px }
 
-.modal-overlay { position:fixed;inset:0;z-index:500;background:rgba(0,0,0,0.6);backdrop-filter:blur(4px);display:flex;align-items:center;justify-content:center;padding:16px }
-.modal-card    { background:var(--bg-surface);border:1px solid var(--border);border-radius:var(--radius-xl);width:100%;max-width:480px;max-height:90vh;overflow-y:auto;box-shadow:0 24px 64px rgba(0,0,0,0.5) }
-.modal-header  { display:flex;justify-content:space-between;align-items:center;padding:24px 24px 0 }
-.modal-header h3 { font-family:var(--font-display);font-size:1.1rem }
-.modal-body    { padding:24px;display:flex;flex-direction:column;gap:4px }
-.modal-footer  { display:flex;gap:10px;justify-content:flex-end;margin-top:20px }
-
-.type-selector { display:grid;grid-template-columns:repeat(2,1fr);gap:8px;margin-top:4px }
-.type-btn { display:flex;align-items:center;gap:8px;padding:10px 14px;background:var(--bg-elevated);border:1px solid var(--border);border-radius:var(--radius);cursor:pointer;color:var(--text-secondary);font-size:13px;font-weight:500;font-family:var(--font-body);transition:all var(--transition) }
-.type-btn:hover { border-color:var(--border-accent);color:var(--text-primary) }
-.type-btn.active { background:var(--accent-dim);border-color:var(--border-accent);color:var(--accent) }
-
-.toggle-row { display:flex;justify-content:space-between;align-items:center;padding:14px;background:var(--bg-elevated);border-radius:var(--radius);margin-bottom:4px }
-.toggle-btn { width:44px;height:24px;background:var(--bg-hover);border:none;border-radius:99px;cursor:pointer;position:relative;transition:background var(--transition);flex-shrink:0 }
-.toggle-btn.active { background:var(--accent) }
-.toggle-knob { position:absolute;top:3px;left:3px;width:18px;height:18px;border-radius:50%;background:white;transition:transform var(--transition);box-shadow:0 1px 4px rgba(0,0,0,0.3) }
-.toggle-btn.active .toggle-knob { transform:translateX(20px) }
-
-.preview-box { display:flex;justify-content:space-between;align-items:center;padding:12px 16px;background:var(--accent-dim);border:1px solid var(--border-accent);border-radius:var(--radius);font-size:14px;font-weight:500 }
-
-.modal-enter-active,.modal-leave-active { transition:all 0.25s ease }
-.modal-enter-from,.modal-leave-to { opacity:0;transform:scale(0.96) }
+.preview-box { display:flex;justify-content:space-between;align-items:center;padding:12px 16px;border-radius:var(--radius);background:var(--accent-dim);border:1px solid var(--border-accent);font-size:14px;font-weight:500 }
 </style>

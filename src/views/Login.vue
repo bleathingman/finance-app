@@ -1,16 +1,16 @@
 <template>
   <div class="login-page">
-    <!-- Background décoration -->
+    <!-- Décorations fond -->
     <div class="bg-glow"></div>
     <div class="bg-grid"></div>
 
-    <div class="login-container">
+    <div class="login-wrapper">
       <!-- Logo -->
       <div class="login-logo">
         <div class="logo-icon">
-          <svg width="28" height="28" viewBox="0 0 24 24" fill="none">
+          <svg width="26" height="26" viewBox="0 0 24 24" fill="none">
             <path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"
-              stroke="#00e5a0" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+              stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
           </svg>
         </div>
         <span>FinanceFlow</span>
@@ -18,13 +18,14 @@
 
       <!-- Card -->
       <div class="login-card">
-        <div class="login-header">
-          <h1>{{ isLogin ? 'Bon retour 👋' : 'Créer un compte' }}</h1>
-          <p>{{ isLogin ? 'Connectez-vous pour accéder à votre tableau de bord' : 'Commencez à gérer vos finances intelligemment' }}</p>
+        <!-- Tabs -->
+        <div class="auth-tabs">
+          <button class="auth-tab" :class="{ active: mode === 'login' }" @click="mode = 'login'">Connexion</button>
+          <button class="auth-tab" :class="{ active: mode === 'register' }" @click="mode = 'register'">Inscription</button>
         </div>
 
-        <!-- Error message -->
-        <div v-if="authStore.error" class="error-msg">
+        <!-- Erreur -->
+        <div v-if="authStore.error" class="auth-error">
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
             <circle cx="12" cy="12" r="10" stroke="currentColor" stroke-width="2"/>
             <line x1="12" y1="8" x2="12" y2="12" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
@@ -33,49 +34,48 @@
           {{ authStore.error }}
         </div>
 
-        <!-- Form -->
+        <!-- Formulaire -->
         <form @submit.prevent="handleSubmit">
           <div class="form-group">
-            <label>Adresse email</label>
+            <label>Email</label>
             <input v-model="email" type="email" class="input" placeholder="vous@exemple.com" required />
           </div>
-
           <div class="form-group">
             <label>Mot de passe</label>
-            <div class="input-with-toggle">
+            <div style="position:relative">
               <input
                 v-model="password"
                 :type="showPassword ? 'text' : 'password'"
                 class="input"
                 placeholder="••••••••"
                 required
-                minlength="6"
+                style="padding-right:44px"
               />
-              <button type="button" class="toggle-pw" @click="showPassword = !showPassword">
+              <button type="button" class="pw-toggle" @click="showPassword = !showPassword">
                 <svg v-if="!showPassword" width="16" height="16" viewBox="0 0 24 24" fill="none">
                   <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" stroke="currentColor" stroke-width="2"/>
                   <circle cx="12" cy="12" r="3" stroke="currentColor" stroke-width="2"/>
                 </svg>
                 <svg v-else width="16" height="16" viewBox="0 0 24 24" fill="none">
-                  <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24M1 1l22 22" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+                  <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+                  <path d="M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+                  <line x1="1" y1="1" x2="23" y2="23" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
                 </svg>
               </button>
             </div>
           </div>
 
-          <button type="submit" class="btn btn-primary submit-btn" :disabled="loading">
-            <div v-if="loading" class="spinner" style="width:18px;height:18px;border-width:2px"></div>
-            <span v-else>{{ isLogin ? 'Se connecter' : 'Créer mon compte' }}</span>
+          <button type="submit" class="btn btn-primary" style="width:100%;justify-content:center;margin-top:8px" :disabled="authStore.loading">
+            <div v-if="authStore.loading" class="spinner" style="width:16px;height:16px;border-width:2px"></div>
+            <span v-else>{{ mode === 'login' ? 'Se connecter' : 'Créer mon compte' }}</span>
           </button>
         </form>
 
-        <!-- Divider -->
-        <div class="divider">
-          <span>ou</span>
-        </div>
+        <!-- Séparateur -->
+        <div class="divider"><span>ou</span></div>
 
         <!-- Google -->
-        <button class="btn-google" @click="handleGoogle" :disabled="loading">
+        <button class="btn-google" @click="handleGoogle" :disabled="authStore.loading">
           <svg width="18" height="18" viewBox="0 0 24 24">
             <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4"/>
             <path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853"/>
@@ -85,20 +85,12 @@
           Continuer avec Google
         </button>
 
-        <!-- Toggle mode -->
-        <p class="toggle-mode">
-          {{ isLogin ? 'Pas encore de compte ?' : 'Déjà un compte ?' }}
-          <button type="button" @click="isLogin = !isLogin; authStore.error = null">
-            {{ isLogin ? 'Créer un compte' : 'Se connecter' }}
-          </button>
-        </p>
-      </div>
-
-      <!-- Features teaser -->
-      <div class="features-teaser">
-        <div v-for="f in features" :key="f.text" class="feature-pill">
-          <span>{{ f.emoji }}</span>
-          <span>{{ f.text }}</span>
+        <!-- Pills features -->
+        <div class="feature-pills">
+          <span class="pill">📊 Dashboard</span>
+          <span class="pill">💰 Budget intelligent</span>
+          <span class="pill">🎯 Objectifs d'épargne</span>
+          <span class="pill">📈 Statistiques</span>
         </div>
       </div>
     </div>
@@ -110,89 +102,63 @@ import { ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
 
-const router = useRouter()
-const authStore = useAuthStore()
-
-const isLogin = ref(true)
-const email = ref('')
-const password = ref('')
+const authStore    = useAuthStore()
+const router       = useRouter()
+const mode         = ref('login')
+const email        = ref('')
+const password     = ref('')
 const showPassword = ref(false)
-const loading = ref(false)
-
-const features = [
-  { emoji: '📊', text: 'Tableau de bord' },
-  { emoji: '💰', text: 'Budget intelligent' },
-  { emoji: '🎯', text: 'Objectifs d\'épargne' },
-  { emoji: '📈', text: 'Statistiques avancées' }
-]
 
 async function handleSubmit() {
-  loading.value = true
-  try {
-    if (isLogin.value) {
-      await authStore.login(email.value, password.value)
-    } else {
-      await authStore.register(email.value, password.value)
-    }
-    router.push('/')
-  } catch (e) {
-    // Error is set in store
-  } finally {
-    loading.value = false
+  if (mode.value === 'login') {
+    await authStore.login(email.value, password.value)
+  } else {
+    await authStore.register(email.value, password.value)
   }
+  if (!authStore.error) router.push('/')
 }
 
 async function handleGoogle() {
-  loading.value = true
-  try {
-    await authStore.loginWithGoogle()
-    router.push('/')
-  } catch (e) {
-    // Error is set in store
-  } finally {
-    loading.value = false
-  }
+  await authStore.loginWithGoogle()
+  if (!authStore.error) router.push('/')
 }
 </script>
 
 <style scoped>
 .login-page {
   min-height: 100vh;
+  background: var(--bg-base);
   display: flex;
   align-items: center;
   justify-content: center;
+  padding: 24px;
   position: relative;
   overflow: hidden;
-  background: var(--bg-base);
 }
 
 .bg-glow {
   position: absolute;
   top: -200px; left: 50%;
   transform: translateX(-50%);
-  width: 800px; height: 800px;
-  background: radial-gradient(circle, rgba(0,229,160,0.08) 0%, transparent 60%);
+  width: 600px; height: 600px;
+  background: radial-gradient(circle, rgba(0,229,160,0.08) 0%, transparent 70%);
   pointer-events: none;
 }
 
 .bg-grid {
   position: absolute;
   inset: 0;
-  background-image:
-    linear-gradient(rgba(255,255,255,0.02) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(255,255,255,0.02) 1px, transparent 1px);
-  background-size: 50px 50px;
+  background-image: linear-gradient(rgba(255,255,255,0.02) 1px, transparent 1px),
+                    linear-gradient(90deg, rgba(255,255,255,0.02) 1px, transparent 1px);
+  background-size: 40px 40px;
   pointer-events: none;
 }
 
-.login-container {
+.login-wrapper {
   width: 100%;
   max-width: 420px;
-  padding: 24px;
-  display: flex;
-  flex-direction: column;
-  gap: 24px;
-  animation: fadeIn 0.5s ease;
+  position: relative;
+  z-index: 1;
 }
 
 .login-logo {
@@ -200,164 +166,70 @@ async function handleGoogle() {
   align-items: center;
   gap: 12px;
   justify-content: center;
+  margin-bottom: 28px;
   font-family: var(--font-display);
   font-weight: 800;
   font-size: 22px;
-  color: var(--text-primary);
 }
 
 .logo-icon {
-  width: 46px; height: 46px;
+  width: 44px; height: 44px;
   background: var(--accent-dim);
   border: 1px solid var(--border-accent);
   border-radius: 12px;
   display: flex; align-items: center; justify-content: center;
+  color: var(--accent);
 }
 
 .login-card {
   background: var(--bg-surface);
   border: 1px solid var(--border);
   border-radius: var(--radius-xl);
-  padding: 32px;
+  padding: 28px;
+  box-shadow: 0 24px 64px rgba(0,0,0,0.3);
 }
 
-.login-header {
-  margin-bottom: 28px;
-  text-align: center;
-}
+/* Tabs */
+.auth-tabs { display: flex; gap: 4px; background: var(--bg-elevated); border-radius: var(--radius); padding: 4px; margin-bottom: 24px; }
+.auth-tab  { flex: 1; padding: 9px; border: none; border-radius: 9px; background: none; font-family: var(--font-body); font-size: 14px; font-weight: 500; color: var(--text-muted); cursor: pointer; transition: all var(--transition); }
+.auth-tab.active { background: var(--bg-surface); color: var(--text-primary); box-shadow: 0 1px 4px rgba(0,0,0,0.2); }
 
-.login-header h1 {
-  font-size: 1.5rem;
-  margin-bottom: 6px;
-}
-
-.login-header p {
-  font-size: 14px;
-}
-
-.error-msg {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  padding: 12px 16px;
-  background: rgba(255, 107, 107, 0.1);
-  border: 1px solid rgba(255, 107, 107, 0.2);
+/* Erreur */
+.auth-error {
+  display: flex; align-items: center; gap: 8px;
+  padding: 12px 14px;
+  background: rgba(255,107,107,0.08);
+  border: 1px solid rgba(255,107,107,0.2);
   border-radius: var(--radius);
   color: var(--red);
-  font-size: 14px;
-  margin-bottom: 20px;
-}
-
-.input-with-toggle { position: relative; }
-.input-with-toggle .input { padding-right: 44px; }
-
-.toggle-pw {
-  position: absolute;
-  right: 12px; top: 50%;
-  transform: translateY(-50%);
-  background: none;
-  border: none;
-  color: var(--text-muted);
-  cursor: pointer;
-  display: flex; align-items: center; justify-content: center;
-  padding: 4px;
-  transition: color var(--transition);
-}
-.toggle-pw:hover { color: var(--text-primary); }
-
-.submit-btn {
-  width: 100%;
-  justify-content: center;
-  padding: 13px;
-  font-size: 15px;
-  font-weight: 600;
-  margin-top: 8px;
-}
-
-.divider {
-  position: relative;
-  text-align: center;
-  margin: 20px 0;
-}
-
-.divider::before {
-  content: '';
-  position: absolute;
-  top: 50%; left: 0; right: 0;
-  height: 1px;
-  background: var(--border);
-}
-
-.divider span {
-  position: relative;
-  background: var(--bg-surface);
-  padding: 0 12px;
   font-size: 13px;
-  color: var(--text-muted);
+  margin-bottom: 16px;
 }
 
+/* Password toggle */
+.pw-toggle {
+  position: absolute; right: 12px; top: 50%; transform: translateY(-50%);
+  background: none; border: none; cursor: pointer; color: var(--text-muted);
+  padding: 4px; transition: color var(--transition);
+}
+.pw-toggle:hover { color: var(--text-primary); }
+
+/* Divider */
+.divider { display: flex; align-items: center; gap: 12px; margin: 20px 0; color: var(--text-muted); font-size: 13px; }
+.divider::before, .divider::after { content: ''; flex: 1; height: 1px; background: var(--border); }
+
+/* Google */
 .btn-google {
-  width: 100%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 10px;
-  padding: 12px;
-  background: var(--bg-elevated);
-  border: 1px solid var(--border);
-  border-radius: var(--radius);
-  color: var(--text-primary);
-  font-family: var(--font-body);
-  font-size: 14px;
-  font-weight: 500;
-  cursor: pointer;
-  transition: all var(--transition);
+  width: 100%; display: flex; align-items: center; justify-content: center; gap: 10px;
+  padding: 11px; border-radius: var(--radius);
+  background: var(--bg-elevated); border: 1px solid var(--border);
+  font-family: var(--font-body); font-size: 14px; font-weight: 500; color: var(--text-primary);
+  cursor: pointer; transition: all var(--transition);
 }
-
-.btn-google:hover {
-  background: var(--bg-hover);
-  border-color: rgba(255,255,255,0.12);
-}
-
+.btn-google:hover { border-color: var(--border-accent); background: var(--bg-hover); }
 .btn-google:disabled { opacity: 0.5; cursor: not-allowed; }
 
-.toggle-mode {
-  text-align: center;
-  margin-top: 20px;
-  font-size: 14px;
-  color: var(--text-secondary);
-}
-
-.toggle-mode button {
-  background: none;
-  border: none;
-  color: var(--accent);
-  cursor: pointer;
-  font-size: 14px;
-  font-weight: 600;
-  font-family: var(--font-body);
-  padding: 0;
-  margin-left: 4px;
-}
-
-.toggle-mode button:hover { text-decoration: underline; }
-
-.features-teaser {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
-  justify-content: center;
-}
-
-.feature-pill {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  padding: 6px 14px;
-  background: var(--bg-surface);
-  border: 1px solid var(--border);
-  border-radius: 99px;
-  font-size: 13px;
-  color: var(--text-secondary);
-}
+/* Pills */
+.feature-pills { display: flex; flex-wrap: wrap; gap: 6px; justify-content: center; margin-top: 20px; }
+.pill { padding: 4px 12px; background: var(--bg-elevated); border: 1px solid var(--border); border-radius: 99px; font-size: 12px; color: var(--text-muted); }
 </style>

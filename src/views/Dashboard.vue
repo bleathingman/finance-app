@@ -513,19 +513,11 @@ onUnmounted(() => {
 </script>
 
 <style scoped>
-/* Notif */
-.notif-banner {
-  display:flex;align-items:center;gap:10px;
-  padding:12px 18px;margin-bottom:20px;
-  background:rgba(79,172,254,0.1);border:1px solid rgba(79,172,254,0.25);
-  border-radius:var(--radius);font-size:14px;color:var(--text-primary);
-}
-.notif-close { margin-left:auto;background:none;border:none;cursor:pointer;color:var(--text-muted);font-size:14px }
-
-/* Header */
 .header-date { font-size:13px;color:var(--text-muted);background:var(--bg-surface);border:1px solid var(--border);border-radius:var(--radius);padding:8px 14px;text-transform:capitalize }
 
-/* KPI */
+.notif-banner { display:flex;align-items:center;gap:10px;padding:12px 18px;margin-bottom:20px;background:rgba(79,172,254,0.1);border:1px solid rgba(79,172,254,0.25);border-radius:var(--radius);font-size:14px }
+.notif-close  { margin-left:auto;background:none;border:none;cursor:pointer;color:var(--text-muted);font-size:14px }
+
 .kpi-card    { display:flex;flex-direction:column;gap:4px }
 .kpi-icon    { width:36px;height:36px;border-radius:10px;display:flex;align-items:center;justify-content:center;margin-bottom:8px }
 .kpi-label   { font-size:12px;color:var(--text-secondary);font-weight:500;text-transform:uppercase;letter-spacing:0.05em }
@@ -534,11 +526,9 @@ onUnmounted(() => {
 .kpi-compare.up   { color:var(--green) }
 .kpi-compare.down { color:var(--red) }
 
-/* Comparaison */
 .comparaison-grid { display:grid;grid-template-columns:repeat(3,1fr);gap:20px }
 .comparaison-item { display:flex;flex-direction:column;gap:10px }
 .comp-label { font-size:13px;font-weight:600 }
-.comp-bars  { display:flex;flex-direction:column;gap:6px }
 .comp-bar-row { display:grid;grid-template-columns:52px 1fr 70px;align-items:center;gap:8px }
 .comp-bar-month { font-size:11px;color:var(--text-muted);white-space:nowrap }
 .comp-bar-track { height:7px;background:var(--bg-elevated);border-radius:99px;overflow:hidden }
@@ -548,33 +538,26 @@ onUnmounted(() => {
 .comp-delta { font-size:12px;font-weight:700;padding:3px 8px;border-radius:99px;width:fit-content }
 .delta-good { background:rgba(0,229,160,0.1);color:var(--green) }
 .delta-bad  { background:rgba(255,107,107,0.1);color:var(--red) }
-
 .dot-mois-prec { display:inline-block;width:8px;height:8px;border-radius:50%;background:var(--bg-hover) }
 .dot-mois-curr { display:inline-block;width:8px;height:8px;border-radius:50%;background:var(--accent) }
 
-/* Donut */
 .donut-center { position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);text-align:center;pointer-events:none }
-
-/* Légende */
 .legend-row    { display:flex;align-items:center;gap:6px;font-size:12px }
 .legend-dot    { width:8px;height:8px;border-radius:50%;flex-shrink:0 }
 .legend-label  { flex:1;color:var(--text-secondary);white-space:nowrap;overflow:hidden;text-overflow:ellipsis }
 .legend-pct    { color:var(--text-muted);min-width:28px;text-align:right }
 .legend-amount { font-weight:600;min-width:40px;text-align:right }
 
-/* Chart empty */
 .chart-empty { display:flex;flex-direction:column;align-items:center;gap:6px;padding:24px;color:var(--text-muted);font-size:14px;text-align:center }
 .chart-empty span { font-size:2rem }
 
-/* Budget */
-.budget-list      { display:flex;flex-direction:column;gap:10px }
-.budget-row       { display:grid;grid-template-columns:1fr auto 36px;align-items:center;gap:8px }
+.budget-list { display:flex;flex-direction:column;gap:10px }
+.budget-row  { display:grid;grid-template-columns:1fr auto 36px;align-items:center;gap:8px }
 .budget-row-info  { display:flex;justify-content:space-between;font-size:13px;font-weight:500;grid-column:1/-1 }
 .budget-bar-track { height:5px;background:var(--bg-elevated);border-radius:99px;overflow:hidden }
 .budget-bar-fill  { height:100%;border-radius:99px;transition:width 0.8s ease }
 .budget-pct       { font-size:11px;font-weight:700;text-align:right }
 
-/* Objectifs */
 .objectifs-list     { display:flex;flex-direction:column;gap:12px }
 .objectif-row       { display:flex;align-items:center;gap:12px }
 .objectif-row-emoji { width:36px;height:36px;border-radius:9px;display:flex;align-items:center;justify-content:center;font-size:18px;flex-shrink:0 }
@@ -582,25 +565,17 @@ onUnmounted(() => {
 .obj-bar-track { height:5px;background:var(--bg-elevated);border-radius:99px;overflow:hidden }
 .obj-bar-fill  { height:100%;border-radius:99px;transition:width 0.8s ease }
 
-/* Transactions */
-.tx-row   { display:flex;align-items:center;gap:12px;padding:12px 0;border-bottom:1px solid var(--border) }
+.tx-row  { display:flex;align-items:center;gap:12px;padding:12px 0;border-bottom:1px solid var(--border) }
 .tx-row:last-of-type { border-bottom:none }
-.tx-icon  { width:38px;height:38px;border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:18px;flex-shrink:0;position:relative }
+.tx-icon { width:38px;height:38px;border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:18px;flex-shrink:0;position:relative }
 .auto-badge { position:absolute;bottom:-4px;right:-4px;font-size:10px }
-.tx-main  { flex:1;min-width:0 }
-.tx-desc  { font-size:14px;font-weight:500;margin-bottom:3px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis }
-.tx-meta  { display:flex;align-items:center;gap:6px }
+.tx-main { flex:1;min-width:0 }
+.tx-desc { font-size:14px;font-weight:500;margin-bottom:3px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis }
+.tx-meta { display:flex;align-items:center;gap:6px }
 
-/* Solde récap */
 .solde-recap  { margin-top:16px;padding:16px;background:var(--bg-elevated);border-radius:var(--radius);display:flex;flex-direction:column;gap:8px }
 .solde-item   { display:flex;justify-content:space-between;align-items:center;font-size:14px;color:var(--text-secondary) }
 .solde-item.solde-final { padding-top:8px;border-top:1px solid var(--border);font-weight:700;color:var(--text-primary);font-size:15px }
 
-/* Animations */
-.slide-down-enter-active,.slide-down-leave-active { transition:all 0.3s ease }
-.slide-down-enter-from,.slide-down-leave-to { opacity:0;transform:translateY(-12px) }
-
-@media (max-width:768px) {
-  .comparaison-grid { grid-template-columns:1fr }
-}
+@media (max-width:768px) { .comparaison-grid { grid-template-columns:1fr } }
 </style>

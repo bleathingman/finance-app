@@ -5,21 +5,13 @@ import { auth } from '@/firebase/config'
 import App from './App.vue'
 import router from './router'
 import './assets/main.css'
-import { inject } from '@vercel/speed-insights'
-
-// Vercel Speed Insights
-inject()
 
 const pinia = createPinia()
 const app   = createApp(App)
-
 app.use(pinia)
 app.use(router)
 
-let appMounted = false
+let mounted = false
 onAuthStateChanged(auth, () => {
-  if (!appMounted) {
-    app.mount('#app')
-    appMounted = true
-  }
+  if (!mounted) { app.mount('#app'); mounted = true }
 })

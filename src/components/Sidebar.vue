@@ -189,24 +189,23 @@ const sunIcon = `<svg width="18" height="18" viewBox="0 0 24 24" fill="none">
 </script>
 
 <style scoped>
-/* ─── Sidebar ────────────────────────────────────────────────────── */
+/* ─── Sidebar container ──────────────────────────────── */
 .sidebar {
   position: fixed;
-  left: 0; top: 0; bottom: 0;
+  top: 0; left: 0; bottom: 0;
   width: var(--sidebar-width);
   background: var(--bg-surface);
   border-right: 1px solid var(--border);
   display: flex;
   flex-direction: column;
   padding: 20px 12px;
-  transition: width var(--transition-slow);
   z-index: 100;
+  transition: width var(--transition-slow);
   overflow: hidden;
 }
-
 .sidebar.collapsed { width: var(--sidebar-collapsed); }
 
-/* Logo */
+/* ─── Logo ───────────────────────────────────────────── */
 .sidebar-logo {
   display: flex;
   align-items: center;
@@ -214,7 +213,6 @@ const sunIcon = `<svg width="18" height="18" viewBox="0 0 24 24" fill="none">
   padding: 8px 12px 24px;
   overflow: hidden;
 }
-
 .logo-icon {
   width: 36px; height: 36px;
   background: var(--accent-dim);
@@ -224,34 +222,22 @@ const sunIcon = `<svg width="18" height="18" viewBox="0 0 24 24" fill="none">
   color: var(--accent);
   flex-shrink: 0;
 }
-
 .logo-text {
   font-family: var(--font-display);
   font-weight: 800;
   font-size: 15px;
-  color: var(--text-primary);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
   transition: opacity var(--transition);
 }
+.collapsed .logo-text { opacity: 0; pointer-events: none; }
 
-/* Nav */
-.sidebar-nav { flex: 1; display: flex; flex-direction: column; gap: 24px; overflow-y: auto; }
+/* ─── Navigation ─────────────────────────────────────── */
+.sidebar-nav { flex: 1; display: flex; flex-direction: column; gap: 4px; overflow-y: auto; overflow-x: hidden; }
 
-.nav-section { display: flex; flex-direction: column; gap: 4px; }
-
-.nav-label {
-  font-size: 10px;
-  font-weight: 700;
-  letter-spacing: 0.12em;
-  text-transform: uppercase;
-  color: var(--text-muted);
-  padding: 0 12px;
-  margin-bottom: 4px;
-  white-space: nowrap;
-  transition: opacity var(--transition);
-}
+.nav-section  { display: flex; flex-direction: column; gap: 2px; margin-bottom: 16px; }
+.nav-label    { font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.1em; color: var(--text-muted); padding: 0 12px; margin-bottom: 6px; white-space: nowrap; overflow: hidden; }
 
 .nav-item {
   display: flex;
@@ -262,61 +248,34 @@ const sunIcon = `<svg width="18" height="18" viewBox="0 0 24 24" fill="none">
   color: var(--text-secondary);
   font-size: 14px;
   font-weight: 500;
-  transition: all var(--transition);
-  position: relative;
-  white-space: nowrap;
   text-decoration: none;
+  transition: all var(--transition);
+  white-space: nowrap;
+  overflow: hidden;
 }
+.nav-item:hover  { background: var(--bg-elevated); color: var(--text-primary); }
+.nav-item.active { background: var(--accent-dim); color: var(--accent); border: 1px solid var(--border-accent); }
 
-.nav-item:hover {
-  background: var(--bg-elevated);
-  color: var(--text-primary);
-}
-
-.nav-item.active {
-  background: var(--accent-dim);
-  color: var(--accent);
-  border: 1px solid var(--border-accent);
-}
-
-.nav-item.active .nav-icon { color: var(--accent); }
-
-.nav-icon {
-  width: 20px; height: 20px;
-  display: flex; align-items: center; justify-content: center;
-  flex-shrink: 0;
-  color: inherit;
-}
-
-.nav-icon :deep(svg) { width: 18px; height: 18px; }
-
+.nav-icon { width: 20px; height: 20px; flex-shrink: 0; display: flex; align-items: center; justify-content: center; }
 .nav-text { transition: opacity var(--transition); }
+.collapsed .nav-text  { opacity: 0; pointer-events: none; }
+.collapsed .nav-label { opacity: 0; }
 
 .nav-badge {
   margin-left: auto;
-  background: var(--orange);
-  color: white;
+  background: var(--accent-dim);
+  color: var(--accent);
+  border: 1px solid var(--border-accent);
+  border-radius: 99px;
   font-size: 11px;
   font-weight: 700;
   padding: 1px 7px;
-  border-radius: 99px;
+  flex-shrink: 0;
 }
+.collapsed .nav-badge { display: none; }
 
-/* Collapsed state */
-.sidebar.collapsed .nav-text,
-.sidebar.collapsed .nav-label,
-.sidebar.collapsed .logo-text,
-.sidebar.collapsed .nav-badge,
-.sidebar.collapsed .user-info { opacity: 0; pointer-events: none; }
-
-/* Bottom */
-.sidebar-bottom {
-  padding-top: 12px;
-  border-top: 1px solid var(--border);
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-}
+/* ─── Bottom section ─────────────────────────────────── */
+.sidebar-bottom { display: flex; flex-direction: column; gap: 8px; padding-top: 12px; border-top: 1px solid var(--border); }
 
 .theme-toggle {
   display: flex;
@@ -326,16 +285,16 @@ const sunIcon = `<svg width="18" height="18" viewBox="0 0 24 24" fill="none">
   border-radius: var(--radius);
   background: none;
   border: none;
-  color: var(--text-secondary);
+  cursor: pointer;
+  color: var(--text-muted);
+  font-family: var(--font-body);
   font-size: 14px;
   font-weight: 500;
-  cursor: pointer;
   width: 100%;
-  transition: all var(--transition);
-  font-family: var(--font-body);
   white-space: nowrap;
+  overflow: hidden;
+  transition: all var(--transition);
 }
-
 .theme-toggle:hover { background: var(--bg-elevated); color: var(--text-primary); }
 
 .user-card {
@@ -344,118 +303,68 @@ const sunIcon = `<svg width="18" height="18" viewBox="0 0 24 24" fill="none">
   gap: 10px;
   padding: 10px 12px;
   border-radius: var(--radius);
-  border: 1px solid var(--border);
+  background: var(--bg-elevated);
+  overflow: hidden;
 }
-
 .user-avatar {
   width: 32px; height: 32px;
-  background: linear-gradient(135deg, var(--accent), #00b4d8);
   border-radius: 50%;
+  background: var(--accent-dim);
+  border: 1px solid var(--border-accent);
   display: flex; align-items: center; justify-content: center;
-  font-size: 13px;
-  font-weight: 700;
-  color: #0c0e14;
+  font-size: 14px; font-weight: 700; color: var(--accent);
   flex-shrink: 0;
-}
-
-.user-info {
-  flex: 1;
-  min-width: 0;
   overflow: hidden;
-  transition: opacity var(--transition);
 }
-
-.user-name {
-  display: block;
-  font-size: 13px;
-  font-weight: 600;
-  color: var(--text-primary);
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
-.user-email {
-  display: block;
-  font-size: 11px;
-  color: var(--text-muted);
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
+.user-avatar img { width: 100%; height: 100%; object-fit: cover; }
+.user-info  { flex: 1; min-width: 0; transition: opacity var(--transition); }
+.user-name  { font-size: 13px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.user-email { font-size: 11px; color: var(--text-muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.collapsed .user-info { opacity: 0; pointer-events: none; }
 
 .logout-btn {
-  background: none;
-  border: none;
-  color: var(--text-muted);
-  cursor: pointer;
-  padding: 4px;
-  border-radius: 6px;
-  display: flex;
-  align-items: center;
-  flex-shrink: 0;
-  transition: color var(--transition);
+  background: none; border: none; cursor: pointer; padding: 4px;
+  color: var(--text-muted); border-radius: 6px;
+  transition: all var(--transition); flex-shrink: 0;
 }
+.logout-btn:hover { color: var(--red); background: rgba(255,107,107,0.1); }
+.collapsed .logout-btn { display: none; }
 
-.logout-btn:hover { color: var(--red); }
-
-/* Collapse button */
+/* ─── Collapse button ────────────────────────────────── */
 .collapse-btn {
   position: absolute;
-  right: -12px; top: 50%;
+  top: 50%; right: -12px;
   transform: translateY(-50%);
   width: 24px; height: 24px;
   background: var(--bg-elevated);
   border: 1px solid var(--border);
   border-radius: 50%;
-  display: flex; align-items: center; justify-content: center;
   cursor: pointer;
-  color: var(--text-secondary);
+  display: flex; align-items: center; justify-content: center;
+  color: var(--text-muted);
   transition: all var(--transition);
   z-index: 10;
 }
+.collapse-btn:hover { border-color: var(--border-accent); color: var(--accent); }
+.collapsed .collapse-btn { transform: translateY(-50%) rotate(180deg); }
 
-.collapse-btn:hover {
-  background: var(--accent);
-  border-color: var(--accent);
-  color: #0c0e14;
+/* ─── Mobile ─────────────────────────────────────────── */
+@media (max-width: 768px) {
+  .sidebar { display: none; }
 }
 
-.collapse-btn svg {
-  transition: transform var(--transition);
-}
-
-/* ─── Mobile nav ─────────────────────────────────────────────────── */
 .mobile-nav {
   display: none;
   position: fixed;
   bottom: 0; left: 0; right: 0;
   background: var(--bg-surface);
   border-top: 1px solid var(--border);
-  z-index: 200;
-  padding: 8px 0 12px;
+  padding: 8px 0;
+  z-index: 100;
 }
-
-.mobile-nav-item {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 3px;
-  flex: 1;
-  font-size: 10px;
-  font-weight: 500;
-  color: var(--text-muted);
-  text-decoration: none;
-  transition: color var(--transition);
-  padding: 4px;
-}
-
-.mobile-nav-item :deep(svg) { width: 20px; height: 20px; }
-
+.mobile-nav-items { display: flex; justify-content: space-around; }
+.mobile-nav-item  { display: flex; flex-direction: column; align-items: center; gap: 4px; padding: 8px 12px; border-radius: var(--radius); color: var(--text-muted); text-decoration: none; font-size: 11px; font-weight: 500; transition: all var(--transition); }
 .mobile-nav-item.active { color: var(--accent); }
 
-@media (max-width: 768px) {
-  .sidebar { display: none; }
-  .mobile-nav { display: flex; }
-}
+@media (max-width: 768px) { .mobile-nav { display: block; } }
 </style>

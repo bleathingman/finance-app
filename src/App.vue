@@ -1,4 +1,5 @@
 <template>
+  <!-- Écran de chargement Firebase -->
   <div v-if="authStore.loading" class="loading-screen">
     <div class="loading-inner">
       <div class="loading-logo">
@@ -12,7 +13,7 @@
   </div>
 
   <template v-else>
-    <!-- Layout avec sidebar (pages authentifiées) -->
+    <!-- Authentifié : layout avec sidebar -->
     <div v-if="authStore.isAuthenticated" class="app-shell">
       <Sidebar />
       <main class="main-content">
@@ -24,13 +25,12 @@
       </main>
     </div>
 
-    <!-- Page de login sans sidebar -->
+    <!-- Non authentifié : page login seule -->
     <router-view v-else />
   </template>
 </template>
 
 <script setup>
-import { onMounted } from 'vue'
 import { useAuthStore } from '@/stores/auth'
 import Sidebar from '@/components/Sidebar.vue'
 
@@ -56,16 +56,22 @@ const authStore = useAuthStore()
   font-weight: 800;
   font-size: 22px;
   color: var(--text-primary);
-  animation: pulse 1.5s ease infinite;
+  animation: pulse-loading 1.5s ease infinite;
 }
 
 .loading-logo {
-  width: 48px; height: 48px;
+  width: 48px;
+  height: 48px;
   background: var(--accent-dim);
   border: 1px solid var(--border-accent);
   border-radius: 14px;
-  display: flex; align-items: center; justify-content: center;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
-@keyframes pulse { 0%,100% { opacity:1; } 50% { opacity:0.5; } }
+@keyframes pulse-loading {
+  0%, 100% { opacity: 1; }
+  50%       { opacity: 0.4; }
+}
 </style>

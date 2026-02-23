@@ -458,26 +458,13 @@ onUnmounted(() => unsubs.forEach(fn => fn && fn()))
 .kpi-value { font-family:var(--font-display);font-size:1.9rem;font-weight:700;margin-bottom:4px }
 .kpi-sub   { font-size:13px;color:var(--text-muted) }
 
-/* Grid */
-.objectifs-grid {
-  display:grid;
-  grid-template-columns:repeat(auto-fill, minmax(320px, 1fr));
-  gap:20px;
-}
+.objectifs-grid { display:grid;grid-template-columns:repeat(auto-fill,minmax(320px,1fr));gap:20px }
 
-/* Carte objectif */
 .objectif-card { padding:22px;position:relative;overflow:hidden;transition:all var(--transition) }
-.objectif-card.completed { border-color:rgba(0,229,160,0.3);background:linear-gradient(135deg, var(--bg-surface) 80%, rgba(0,229,160,0.04)) }
+.objectif-card.completed { border-color:rgba(0,229,160,0.3);background:linear-gradient(135deg,var(--bg-surface) 80%,rgba(0,229,160,0.04)) }
 .objectif-card:hover { transform:translateY(-2px);box-shadow:0 8px 32px rgba(0,0,0,0.2) }
+.completed-ribbon { position:absolute;top:14px;right:-28px;background:var(--green);color:#0c0e14;font-size:11px;font-weight:800;padding:4px 36px;transform:rotate(35deg);letter-spacing:0.05em }
 
-.completed-ribbon {
-  position:absolute;top:14px;right:-28px;
-  background:var(--green);color:#0c0e14;
-  font-size:11px;font-weight:800;padding:4px 36px;
-  transform:rotate(35deg);letter-spacing:0.05em;
-}
-
-/* Header */
 .obj-header  { display:flex;align-items:flex-start;gap:12px;margin-bottom:18px }
 .obj-emoji-wrap { width:48px;height:48px;border-radius:14px;display:flex;align-items:center;justify-content:center;font-size:24px;flex-shrink:0 }
 .obj-info    { flex:1;min-width:0 }
@@ -485,7 +472,6 @@ onUnmounted(() => unsubs.forEach(fn => fn && fn()))
 .obj-subtitle{ font-size:12px;color:var(--text-muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis }
 .obj-actions { display:flex;gap:6px;flex-shrink:0 }
 
-/* Montants + cercle */
 .obj-amounts { display:grid;grid-template-columns:1fr auto 1fr;align-items:center;gap:8px;margin-bottom:14px }
 .obj-amount-label { font-size:11px;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.05em;margin-bottom:2px;font-weight:600 }
 .obj-amount-val   { font-family:var(--font-display);font-size:15px;font-weight:700 }
@@ -493,54 +479,29 @@ onUnmounted(() => unsubs.forEach(fn => fn && fn()))
 .obj-pct-circle { position:relative;width:56px;height:56px;display:flex;align-items:center;justify-content:center;margin:auto }
 .obj-pct-text   { position:absolute;font-family:var(--font-display);font-size:13px;font-weight:800 }
 
-/* Barre */
 .obj-bar-track { height:8px;background:var(--bg-elevated);border-radius:99px;overflow:hidden;margin-bottom:12px }
 .obj-bar-fill  { height:100%;border-radius:99px;transition:width 1s cubic-bezier(0.4,0,0.2,1) }
 
-/* Footer */
 .obj-footer { display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;font-size:13px;color:var(--text-secondary) }
-.obj-footer-label { color:var(--text-muted) }
 .obj-deadline { font-size:12px;padding:3px 10px;background:var(--bg-elevated);border-radius:99px }
 .obj-deadline.urgent { background:rgba(255,107,107,0.1);color:var(--red) }
 
-/* Simulation */
-.simulation-box { background:var(--bg-elevated);border-radius:var(--radius);padding:12px;margin-bottom:12px }
+.simulation-box   { background:var(--bg-elevated);border-radius:var(--radius);padding:12px;margin-bottom:12px }
 .simulation-title { font-size:12px;font-weight:700;color:var(--text-muted);margin-bottom:8px;text-transform:uppercase;letter-spacing:0.06em }
 .simulation-rows  { display:flex;flex-direction:column;gap:6px }
 .simulation-row   { display:flex;justify-content:space-between;font-size:13px }
 
-/* Icon buttons */
-.icon-btn { width:28px;height:28px;display:flex;align-items:center;justify-content:center;background:none;border:1px solid var(--border);border-radius:7px;cursor:pointer;color:var(--text-muted);transition:all var(--transition) }
-.icon-btn:hover { background:var(--bg-elevated);color:var(--text-primary) }
-.icon-btn.danger:hover { background:rgba(255,107,107,0.1);color:var(--red);border-color:rgba(255,107,107,0.3) }
-
-/* Modal */
-.modal-overlay { position:fixed;inset:0;z-index:500;background:rgba(0,0,0,0.6);backdrop-filter:blur(4px);display:flex;align-items:center;justify-content:center;padding:16px }
-.modal-card    { background:var(--bg-surface);border:1px solid var(--border);border-radius:var(--radius-xl);width:100%;max-width:520px;max-height:90vh;overflow-y:auto;box-shadow:0 24px 64px rgba(0,0,0,0.5) }
-.modal-header  { display:flex;justify-content:space-between;align-items:center;padding:24px 24px 0 }
-.modal-header h3 { font-family:var(--font-display);font-size:1.1rem }
-.modal-body    { padding:24px;display:flex;flex-direction:column;gap:4px }
-.modal-footer  { display:flex;gap:10px;justify-content:flex-end;margin-top:20px }
-
-/* Emoji picker */
 .emoji-picker { display:flex;flex-wrap:wrap;gap:6px;margin-top:4px }
 .emoji-btn    { width:36px;height:36px;font-size:18px;display:flex;align-items:center;justify-content:center;border:1px solid var(--border);border-radius:8px;background:var(--bg-elevated);cursor:pointer;transition:all var(--transition) }
 .emoji-btn:hover { border-color:var(--border-accent) }
 .emoji-btn.active { border-color:var(--accent);background:var(--accent-dim) }
 
-/* Color picker */
 .color-picker { display:flex;gap:8px;flex-wrap:wrap;margin-top:4px }
 .color-btn    { width:28px;height:28px;border-radius:50%;border:3px solid transparent;cursor:pointer;transition:all var(--transition) }
 .color-btn:hover { transform:scale(1.15) }
 .color-btn.active { border-color:white;transform:scale(1.2);box-shadow:0 0 0 2px var(--bg-surface) }
 
-/* Aperçu */
 .apercu-objectif { padding:16px;background:var(--bg-elevated);border-radius:var(--radius);margin-top:4px }
 
-.modal-enter-active,.modal-leave-active { transition:all 0.25s ease }
-.modal-enter-from,.modal-leave-to { opacity:0;transform:scale(0.96) }
-
-@media (max-width:640px) {
-  .objectifs-grid { grid-template-columns:1fr }
-}
+@media (max-width:640px) { .objectifs-grid { grid-template-columns:1fr } }
 </style>
