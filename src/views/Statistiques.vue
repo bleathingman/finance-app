@@ -221,8 +221,9 @@ const categories = [
   { nom: 'Loisirs',      emoji: '🎮', color: '#c084fc' },
   { nom: 'Abonnements',  emoji: '📦', color: '#fb7185' },
   { nom: 'Santé',        emoji: '🏥', color: '#34d399' },
-  { nom: 'Vêtements',    emoji: '👕', color: '#f472b6' },
-  { nom: 'Autres',       emoji: '💳', color: '#94a3b8' }
+  { nom: 'Vêtements',          emoji: '👕', color: '#f472b6' },
+  { nom: 'Banque / Assurance', emoji: '🏦', color: '#60a5fa' },
+  { nom: 'Autres',             emoji: '💳', color: '#94a3b8' }
 ]
 function catColor(nom) { return categories.find(c => c.nom === nom)?.color || '#94a3b8' }
 function catEmoji(nom) { return categories.find(c => c.nom === nom)?.emoji || '💳' }

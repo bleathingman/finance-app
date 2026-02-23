@@ -187,7 +187,7 @@
               </div>
               <div class="form-group">
                 <label>Date</label>
-                <input v-model="form.date" type="date" class="input" required />
+                <input v-model="form.date" type="date" class="input" lang="fr" required />
               </div>
               <div class="toggle-row">
                 <div>
@@ -231,10 +231,11 @@ const filtreRecurrence = ref('')
 const recherche        = ref('')
 
 const types = [
-  { nom: 'Salaire',         emoji: '💼', color: '#00e5a0' },
-  { nom: 'Freelance',       emoji: '🧑‍💻', color: '#4facfe' },
-  { nom: 'Revenus passifs', emoji: '📈', color: '#ff9f43' },
-  { nom: 'Autres',          emoji: '💡', color: '#c084fc' }
+  { nom: 'Salaire',            emoji: '💼', color: '#00e5a0' },
+  { nom: 'Freelance',          emoji: '🧑‍💻', color: '#4facfe' },
+  { nom: 'Revenus passifs',    emoji: '📈', color: '#ff9f43' },
+  { nom: 'Banque / Assurance', emoji: '🏦', color: '#60a5fa' },
+  { nom: 'Autres',             emoji: '💡', color: '#c084fc' }
 ]
 
 const defaultForm = () => ({

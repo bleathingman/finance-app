@@ -206,7 +206,7 @@
               </div>
               <div class="form-group">
                 <label>Date</label>
-                <input v-model="form.date" type="date" class="input" required />
+                <input v-model="form.date" type="date" class="input" lang="fr" required />
               </div>
               <div class="toggle-row">
                 <div>
@@ -258,7 +258,8 @@ const categories = [
   { nom: 'Abonnements', emoji: '📦', color: '#fb7185' },
   { nom: 'Santé',       emoji: '🏥', color: '#34d399' },
   { nom: 'Vêtements',   emoji: '👕', color: '#f472b6' },
-  { nom: 'Autres',      emoji: '💳', color: '#94a3b8' }
+  { nom: 'Banque / Assurance', emoji: '🏦', color: '#60a5fa' },
+  { nom: 'Autres',             emoji: '💳', color: '#94a3b8' }
 ]
 
 const defaultForm = () => ({
