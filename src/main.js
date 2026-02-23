@@ -5,10 +5,6 @@ import { auth } from '@/firebase/config'
 import App from './App.vue'
 import router from './router'
 import './assets/main.css'
-import { inject } from '@vercel/speed-insights'
-
-// Vercel Speed Insights
-inject()
 
 const pinia = createPinia()
 const app   = createApp(App)
