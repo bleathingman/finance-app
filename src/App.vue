@@ -27,11 +27,14 @@
     <!-- Page de login sans sidebar -->
     <router-view v-else />
   </template>
+
+  <SpeedInsights />
 </template>
 
 <script setup>
 import { onMounted } from 'vue'
 import { useAuthStore } from '@/stores/auth'
+import { SpeedInsights } from '@vercel/speed-insights/vue'
 import Sidebar from '@/components/Sidebar.vue'
 
 const authStore = useAuthStore()
