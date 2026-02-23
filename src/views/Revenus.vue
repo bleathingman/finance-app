@@ -6,7 +6,7 @@
         <h1>Revenus</h1>
         <p>{{ moisCourant }} — {{ financeStore.revenus.length }} transaction(s)</p>
       </div>
-      <button class="btn btn-primary" @click="showModal = true">
+      <button class="btn btn-primary" @click="ouvrirAjout">
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
           <line x1="12" y1="5" x2="12" y2="19" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
           <line x1="5" y1="12" x2="19" y2="12" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
@@ -43,9 +43,7 @@
     <div class="grid-2" style="margin-bottom:28px">
       <div class="card">
         <h3 style="font-family:var(--font-display);margin-bottom:20px">Répartition par type</h3>
-        <div v-if="!financeStore.revenus.length" class="empty-state">
-          <p>Aucun revenu enregistré</p>
-        </div>
+        <div v-if="!financeStore.revenus.length" class="empty-state"><p>Aucun revenu enregistré</p></div>
         <div v-else class="type-bars">
           <div v-for="t in typesStats" :key="t.nom" class="type-row">
             <div class="type-header">
@@ -58,9 +56,7 @@
                 <span style="font-size:12px;font-weight:600;min-width:36px;text-align:right" :style="{ color: t.pct > 50 ? 'var(--accent)' : 'var(--text-muted)' }">{{ t.pct }}%</span>
               </div>
             </div>
-            <div class="bar-track">
-              <div class="bar-fill" :style="{ width: t.pct + '%', background: t.color }"></div>
-            </div>
+            <div class="bar-track"><div class="bar-fill" :style="{ width: t.pct + '%', background: t.color }"></div></div>
           </div>
         </div>
       </div>
@@ -70,7 +66,7 @@
         <div v-if="!recurrents.length" class="empty-state">
           <span style="font-size:2rem">💼</span>
           <p>Aucune source récurrente</p>
-          <button class="btn btn-ghost" style="font-size:13px;margin-top:8px" @click="showModal = true">+ Ajouter</button>
+          <button class="btn btn-ghost" style="font-size:13px;margin-top:8px" @click="ouvrirAjout">+ Ajouter</button>
         </div>
         <div v-else class="recurring-list">
           <div v-for="r in recurrents" :key="r.id" class="recurring-item">
@@ -113,7 +109,7 @@
         <div style="font-size:2.5rem;margin-bottom:12px">💰</div>
         <h3>{{ !financeStore.revenus.length ? 'Aucun revenu enregistré' : 'Aucun résultat' }}</h3>
         <p>{{ !financeStore.revenus.length ? 'Commencez par ajouter votre premier revenu.' : 'Modifiez vos filtres.' }}</p>
-        <button v-if="!financeStore.revenus.length" class="btn btn-primary" style="margin-top:16px" @click="showModal = true">+ Ajouter</button>
+        <button v-if="!financeStore.revenus.length" class="btn btn-primary" style="margin-top:16px" @click="ouvrirAjout">+ Ajouter</button>
       </div>
 
       <div v-else>
@@ -129,12 +125,20 @@
             </div>
           </div>
           <div class="amount-positive" style="font-size:15px;flex-shrink:0">+{{ formatAmount(r.montant) }}</div>
-          <button class="icon-btn danger" @click="financeStore.supprimerRevenu(r.id)">
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none">
-              <polyline points="3 6 5 6 21 6" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
-              <path d="M19 6l-1 14H6L5 6M10 11v6M14 11v6M9 6V4h6v2" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-            </svg>
-          </button>
+          <div style="display:flex;gap:6px;flex-shrink:0">
+            <button class="icon-btn" @click="ouvrirEdition(r)" title="Modifier">
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none">
+                <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+                <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+              </svg>
+            </button>
+            <button class="icon-btn danger" @click="financeStore.supprimerRevenu(r.id)" title="Supprimer">
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none">
+                <polyline points="3 6 5 6 21 6" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+                <path d="M19 6l-1 14H6L5 6M10 11v6M14 11v6M9 6V4h6v2" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+              </svg>
+            </button>
+          </div>
         </div>
         <div class="list-footer">
           <span style="color:var(--text-muted);font-size:14px">{{ revenusFiltres.length }} résultat(s)</span>
@@ -143,13 +147,13 @@
       </div>
     </div>
 
-    <!-- Modal -->
+    <!-- ─── Modal Ajout / Édition ─────────────────────────────────── -->
     <teleport to="body">
       <transition name="modal">
         <div v-if="showModal" class="modal-overlay" @click.self="closeModal">
           <div class="modal-card">
             <div class="modal-header">
-              <h3>Ajouter un revenu</h3>
+              <h3>{{ editMode ? '✏️ Modifier le revenu' : 'Ajouter un revenu' }}</h3>
               <button class="icon-btn" @click="closeModal">
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
                   <line x1="18" y1="6" x2="6" y2="18" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
@@ -157,7 +161,7 @@
                 </svg>
               </button>
             </div>
-            <form @submit.prevent="handleAjouter" class="modal-body">
+            <form @submit.prevent="handleSauvegarder" class="modal-body">
               <div class="form-group">
                 <label>Type de revenu</label>
                 <div class="cat-selector">
@@ -202,7 +206,7 @@
                 <button type="button" class="btn btn-ghost" @click="closeModal">Annuler</button>
                 <button type="submit" class="btn btn-primary" :disabled="submitting">
                   <div v-if="submitting" class="spinner" style="width:16px;height:16px;border-width:2px"></div>
-                  <span v-else>Ajouter</span>
+                  <span v-else>{{ editMode ? 'Enregistrer les modifications' : 'Ajouter' }}</span>
                 </button>
               </div>
             </form>
@@ -219,6 +223,8 @@ import { useFinanceStore } from '@/stores/finance'
 
 const financeStore = useFinanceStore()
 const showModal    = ref(false)
+const editMode     = ref(false)
+const editId       = ref(null)
 const submitting   = ref(false)
 const filtreType       = ref('')
 const filtreRecurrence = ref('')
@@ -280,13 +286,45 @@ const revenusFiltres = computed(() =>
 )
 const totalFiltres = computed(() => revenusFiltres.value.reduce((s, r) => s + r.montant, 0))
 
-function closeModal() { showModal.value = false; form.value = defaultForm() }
+function ouvrirAjout() {
+  editMode.value = false
+  editId.value   = null
+  form.value     = defaultForm()
+  showModal.value = true
+}
 
-async function handleAjouter() {
+function ouvrirEdition(revenu) {
+  editMode.value = true
+  editId.value   = revenu.id
+  // Récupère la date stockée
+  const d = revenu.createdAt?.toDate ? revenu.createdAt.toDate() : new Date(revenu.createdAt || Date.now())
+  const dateStr = revenu.date || d.toISOString().split('T')[0]
+  form.value = {
+    type:        revenu.type,
+    description: revenu.description,
+    montant:     revenu.montant,
+    date:        dateStr,
+    recurrent:   revenu.recurrent || false
+  }
+  showModal.value = true
+}
+
+function closeModal() {
+  showModal.value = false
+  editMode.value  = false
+  editId.value    = null
+  form.value      = defaultForm()
+}
+
+async function handleSauvegarder() {
   if (!form.value.montant || form.value.montant <= 0) return
   submitting.value = true
   try {
-    await financeStore.ajouterRevenu({ ...form.value })
+    if (editMode.value && editId.value) {
+      await financeStore.modifierRevenu(editId.value, { ...form.value })
+    } else {
+      await financeStore.ajouterRevenu({ ...form.value })
+    }
     closeModal()
   } finally { submitting.value = false }
 }
@@ -322,11 +360,9 @@ onUnmounted(() => { if (unsub) unsub() })
 .tx-meta  { display:flex;align-items:center;gap:6px;flex-wrap:wrap }
 
 .list-footer { display:flex;justify-content:space-between;align-items:center;padding-top:16px;margin-top:8px;border-top:1px solid var(--border) }
-
 .empty-state { display:flex;flex-direction:column;align-items:center;gap:8px;padding:24px;text-align:center;color:var(--text-muted);font-size:14px }
 .empty-history { display:flex;flex-direction:column;align-items:center;padding:48px;text-align:center;gap:8px }
 .empty-history h3 { font-family:var(--font-display) }
 .empty-history p  { color:var(--text-muted);font-size:14px }
-
 .preview-box { display:flex;justify-content:space-between;align-items:center;padding:12px 16px;border-radius:var(--radius);background:var(--accent-dim);border:1px solid var(--border-accent);font-size:14px;font-weight:500 }
 </style>
