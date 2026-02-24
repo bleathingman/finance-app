@@ -4,7 +4,7 @@
     <div class="page-header" style="display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:16px">
       <div>
         <h1>Revenus</h1>
-        <p>{{ moisCourant }} — {{ financeStore.revenus.length }} transaction(s)</p>
+        <p>{{ moisCourant }} — {{ financeStore.revenusDuMois.length }} transaction(s)</p>
       </div>
       <button class="btn btn-primary" @click="ouvrirAjout">
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
@@ -20,7 +20,7 @@
       <div class="card card-accent">
         <div class="kpi-label">Total du mois</div>
         <div class="kpi-value text-accent">{{ formatAmount(financeStore.totalRevenus) }}</div>
-        <div class="kpi-sub">{{ financeStore.revenus.length }} transaction(s)</div>
+        <div class="kpi-sub">{{ financeStore.revenusDuMois.length }} transaction(s)</div>
       </div>
       <div class="card">
         <div class="kpi-label">Récurrents</div>
@@ -43,7 +43,7 @@
     <div class="grid-2" style="margin-bottom:28px">
       <div class="card">
         <h3 style="font-family:var(--font-display);margin-bottom:20px">Répartition par type</h3>
-        <div v-if="!financeStore.revenus.length" class="empty-state"><p>Aucun revenu enregistré</p></div>
+        <div v-if="!financeStore.revenusDuMois.length" class="empty-state"><p>Aucun revenu enregistré</p></div>
         <div v-else class="type-bars">
           <div v-for="t in typesStats" :key="t.nom" class="type-row">
             <div class="type-header">
@@ -107,9 +107,9 @@
 
       <div v-if="!revenusFiltres.length" class="empty-history">
         <div style="font-size:2.5rem;margin-bottom:12px">💰</div>
-        <h3>{{ !financeStore.revenus.length ? 'Aucun revenu enregistré' : 'Aucun résultat' }}</h3>
-        <p>{{ !financeStore.revenus.length ? 'Commencez par ajouter votre premier revenu.' : 'Modifiez vos filtres.' }}</p>
-        <button v-if="!financeStore.revenus.length" class="btn btn-primary" style="margin-top:16px" @click="ouvrirAjout">+ Ajouter</button>
+        <h3>{{ !financeStore.revenusDuMois.length ? 'Aucun revenu enregistré' : 'Aucun résultat' }}</h3>
+        <p>{{ !financeStore.revenusDuMois.length ? 'Commencez par ajouter votre premier revenu.' : 'Modifiez vos filtres.' }}</p>
+        <button v-if="!financeStore.revenusDuMois.length" class="btn btn-primary" style="margin-top:16px" @click="ouvrirAjout">+ Ajouter</button>
       </div>
 
       <div v-else>
@@ -257,18 +257,18 @@ function formatDate(ts) {
 }
 
 const moisCourant    = computed(() => new Date().toLocaleDateString('fr-FR', { month: 'long', year: 'numeric' }))
-const recurrents     = computed(() => financeStore.revenus.filter(r => r.recurrent))
+const recurrents     = computed(() => financeStore.revenusDuMois.filter(r => r.recurrent))
 const totalRecurrents= computed(() => recurrents.value.reduce((s, r) => s + r.montant, 0))
 const nbRecurrents   = computed(() => recurrents.value.length)
-const ponctuels      = computed(() => financeStore.revenus.filter(r => !r.recurrent))
+const ponctuels      = computed(() => financeStore.revenusDuMois.filter(r => !r.recurrent))
 const totalPonctuels = computed(() => ponctuels.value.reduce((s, r) => s + r.montant, 0))
 const nbPonctuels    = computed(() => ponctuels.value.length)
-const plusGros       = computed(() => [...financeStore.revenus].sort((a, b) => b.montant - a.montant)[0])
+const plusGros       = computed(() => [...financeStore.revenusDuMois].sort((a, b) => b.montant - a.montant)[0])
 
 const typesStats = computed(() => {
-  if (!financeStore.revenus.length) return []
+  if (!financeStore.revenusDuMois.length) return []
   const map = {}
-  financeStore.revenus.forEach(r => { map[r.type] = (map[r.type] || 0) + r.montant })
+  financeStore.revenusDuMois.forEach(r => { map[r.type] = (map[r.type] || 0) + r.montant })
   const total = financeStore.totalRevenus || 1
   return Object.entries(map).map(([nom, t]) => ({
     nom, total: t, pct: Math.round((t / total) * 100),
@@ -277,7 +277,7 @@ const typesStats = computed(() => {
 })
 
 const revenusFiltres = computed(() =>
-  financeStore.revenus.filter(r => {
+  financeStore.revenusDuMois.filter(r => {
     if (filtreType.value && r.type !== filtreType.value) return false
     if (filtreRecurrence.value === 'recurrent' && !r.recurrent) return false
     if (filtreRecurrence.value === 'ponctuel' && r.recurrent) return false

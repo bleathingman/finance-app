@@ -4,7 +4,7 @@
     <div class="page-header" style="display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:16px">
       <div>
         <h1>Dépenses</h1>
-        <p>{{ moisCourant }} — {{ financeStore.depenses.length }} transaction(s)</p>
+        <p>{{ moisCourant }} — {{ financeStore.depensesDuMois.length }} transaction(s)</p>
       </div>
       <div style="display:flex;gap:8px">
         <button class="btn btn-ghost" @click="showQuickAdd = !showQuickAdd">⚡ Ajout rapide</button>
@@ -44,7 +44,7 @@
       <div class="card" style="border-color:rgba(255,107,107,0.2)">
         <div class="kpi-label">Total du mois</div>
         <div class="kpi-value" style="color:var(--red)">{{ formatAmount(totalMois) }}</div>
-        <div class="kpi-sub">{{ financeStore.depenses.length }} dépense(s)</div>
+        <div class="kpi-sub">{{ financeStore.depensesDuMois.length }} dépense(s)</div>
       </div>
       <div class="card">
         <div class="kpi-label">Dépense moyenne</div>
@@ -127,9 +127,9 @@
 
       <div v-if="!depensesFiltrees.length" class="empty-history">
         <div style="font-size:2.5rem;margin-bottom:12px">🧾</div>
-        <h3>{{ !financeStore.depenses.length ? 'Aucune dépense enregistrée' : 'Aucun résultat' }}</h3>
-        <p>{{ !financeStore.depenses.length ? 'Commencez par ajouter votre première dépense.' : 'Modifiez vos filtres.' }}</p>
-        <button v-if="!financeStore.depenses.length" class="btn btn-primary" style="margin-top:16px" @click="ouvrirAjout">+ Ajouter</button>
+        <h3>{{ !financeStore.depensesDuMois.length ? 'Aucune dépense enregistrée' : 'Aucun résultat' }}</h3>
+        <p>{{ !financeStore.depensesDuMois.length ? 'Commencez par ajouter votre première dépense.' : 'Modifiez vos filtres.' }}</p>
+        <button v-if="!financeStore.depensesDuMois.length" class="btn btn-primary" style="margin-top:16px" @click="ouvrirAjout">+ Ajouter</button>
       </div>
 
       <div v-else>
@@ -282,17 +282,17 @@ function formatDate(ts) {
 }
 
 const moisCourant        = computed(() => new Date().toLocaleDateString('fr-FR', { month: 'long', year: 'numeric' }))
-const totalMois          = computed(() => financeStore.depenses.reduce((s, d) => s + d.montant, 0))
-const moyennePar         = computed(() => financeStore.depenses.length ? totalMois.value / financeStore.depenses.length : 0)
-const plusGrosse         = computed(() => [...financeStore.depenses].sort((a, b) => b.montant - a.montant)[0])
-const depensesRecurrentes= computed(() => financeStore.depenses.filter(d => d.recurrent))
+const totalMois          = computed(() => financeStore.depensesDuMois.reduce((s, d) => s + d.montant, 0))
+const moyennePar         = computed(() => financeStore.depensesDuMois.length ? totalMois.value / financeStore.depensesDuMois.length : 0)
+const plusGrosse         = computed(() => [...financeStore.depensesDuMois].sort((a, b) => b.montant - a.montant)[0])
+const depensesRecurrentes= computed(() => financeStore.depensesDuMois.filter(d => d.recurrent))
 const totalRecurrents    = computed(() => depensesRecurrentes.value.reduce((s, d) => s + d.montant, 0))
 const nbRecurrents       = computed(() => depensesRecurrentes.value.length)
 
 const categoriesStats = computed(() => {
-  if (!financeStore.depenses.length) return []
+  if (!financeStore.depensesDuMois.length) return []
   const map = {}
-  financeStore.depenses.forEach(d => { map[d.categorie] = (map[d.categorie] || 0) + d.montant })
+  financeStore.depensesDuMois.forEach(d => { map[d.categorie] = (map[d.categorie] || 0) + d.montant })
   const total = totalMois.value || 1
   return Object.entries(map).map(([nom, t]) => ({
     nom, total: t, pct: Math.round((t / total) * 100),
@@ -301,7 +301,7 @@ const categoriesStats = computed(() => {
 })
 
 const depensesFiltrees = computed(() =>
-  financeStore.depenses.filter(d => {
+  financeStore.depensesDuMois.filter(d => {
     if (filtreCategorie.value && d.categorie !== filtreCategorie.value) return false
     if (filtreRecurrence.value === 'recurrent' && !d.recurrent) return false
     if (filtreRecurrence.value === 'ponctuel' && d.recurrent) return false

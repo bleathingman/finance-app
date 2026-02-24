@@ -23,18 +23,29 @@ export const useFinanceStore = defineStore('finance', () => {
     return Timestamp.fromDate(new Date(y, m - 1, d, 12, 0, 0))
   }
 
-  // ─── Totaux calculés ──────────────────────────────────────────────
+  // ─── Filtre mois courant ──────────────────────────────────────────
+  function estCeMois(tx) {
+    if (!tx.createdAt) return false
+    const d = tx.createdAt.toDate ? tx.createdAt.toDate() : new Date(tx.createdAt)
+    const now = new Date()
+    return d.getMonth() === now.getMonth() && d.getFullYear() === now.getFullYear()
+  }
+
+  const revenusDuMois  = computed(() => revenus.value.filter(estCeMois))
+  const depensesDuMois = computed(() => depenses.value.filter(estCeMois))
+
+  // ─── Totaux mois courant ───────────────────────────────────────────
   const totalRevenus = computed(() =>
-    revenus.value.reduce((sum, r) => sum + r.montant, 0)
+    revenusDuMois.value.reduce((sum, r) => sum + r.montant, 0)
   )
   const totalDepenses = computed(() =>
-    depenses.value.reduce((sum, d) => sum + d.montant, 0)
+    depensesDuMois.value.reduce((sum, d) => sum + d.montant, 0)
   )
   const solde = computed(() => totalRevenus.value - totalDepenses.value)
 
   const depensesParCategorie = computed(() => {
     const map = {}
-    depenses.value.forEach(d => {
+    depensesDuMois.value.forEach(d => {
       map[d.categorie] = (map[d.categorie] || 0) + d.montant
     })
     return map
@@ -180,7 +191,7 @@ export const useFinanceStore = defineStore('finance', () => {
 
   return {
     revenus, depenses, budgets, objectifs, loading,
-    totalRevenus, totalDepenses, solde, depensesParCategorie,
+    totalRevenus, totalDepenses, solde, depensesParCategorie, revenusDuMois, depensesDuMois,
     ajouterRevenu, modifierRevenu, supprimerRevenu, ecouter_revenus,
     ajouterDepense, modifierDepense, supprimerDepense, ecouter_depenses,
     definirBudget, ecouter_budgets,
