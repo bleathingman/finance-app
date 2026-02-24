@@ -38,21 +38,23 @@
       </div>
     </transition>
   </teleport>
+
+  <!-- PWA install prompt -->
+  <PwaPrompt />
 </template>
 
 <script setup>
 import { ref, watch } from 'vue'
 import { useAuthStore } from '@/stores/auth'
 import Sidebar from '@/components/Sidebar.vue'
+import PwaPrompt from '@/components/PwaPrompt.vue'
 
-const authStore  = useAuthStore()
-const showToast  = ref(false)
-let prevAuth     = false
+const authStore = useAuthStore()
+const showToast = ref(false)
+let prevAuth    = false
 
-// Affiche le toast quand on passe de connecté → déconnecté sans action manuelle
 watch(() => authStore.isAuthenticated, (isAuth) => {
   if (prevAuth && !isAuth) {
-    // Déconnexion automatique (pas via le bouton logout qui redirige lui-même)
     showToast.value = true
     setTimeout(() => { showToast.value = false }, 4000)
   }
@@ -81,19 +83,15 @@ watch(() => authStore.isAuthenticated, (isAuth) => {
 }
 @keyframes pulse-loading { 0%,100% { opacity:1 } 50% { opacity:0.4 } }
 
-/* Toast */
 .toast-logout {
   position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%);
   display: flex; align-items: center; gap: 10px;
   padding: 14px 22px;
-  background: var(--bg-elevated);
-  border: 1px solid var(--border);
+  background: var(--bg-elevated); border: 1px solid var(--border);
   border-radius: var(--radius-lg);
   box-shadow: 0 8px 32px rgba(0,0,0,0.4);
-  font-size: 14px; font-weight: 500;
-  color: var(--text-primary);
-  z-index: 9999;
-  white-space: nowrap;
+  font-size: 14px; font-weight: 500; color: var(--text-primary);
+  z-index: 9999; white-space: nowrap;
 }
 .toast-enter-active { transition: all 0.3s cubic-bezier(0.34,1.56,0.64,1) }
 .toast-leave-active { transition: all 0.25s ease }
