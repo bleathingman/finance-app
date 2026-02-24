@@ -41,6 +41,8 @@
 
   <!-- PWA install prompt -->
   <PwaPrompt />
+  <!-- PWA update notification -->
+  <PwaUpdate />
 </template>
 
 <script setup>
@@ -48,6 +50,7 @@ import { ref, watch } from 'vue'
 import { useAuthStore } from '@/stores/auth'
 import Sidebar from '@/components/Sidebar.vue'
 import PwaPrompt from '@/components/PwaPrompt.vue'
+import PwaUpdate from '@/components/PwaUpdate.vue'
 
 const authStore = useAuthStore()
 const showToast = ref(false)

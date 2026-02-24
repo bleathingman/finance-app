@@ -14,6 +14,8 @@ export default defineConfig({
 
       // Fichiers à mettre en cache dès l'install
       workbox: {
+        skipWaiting: false,      // on gère manuellement via SKIP_WAITING
+        clientsClaim: true,      // le nouveau SW prend le contrôle immédiatement après activation
         globPatterns: ['**/*.{js,css,html,ico,png,svg,webp,woff2}'],
         // Cache Firestore + Google Fonts en réseau d'abord
         runtimeCaching: [
