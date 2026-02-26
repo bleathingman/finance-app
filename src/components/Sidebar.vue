@@ -405,11 +405,13 @@ const sunIcon = `<svg width="18" height="18" viewBox="0 0 24 24" fill="none">
   display: none;
   position: fixed;
   top: 0; left: 0; right: 0;
-  height: 60px;
+  /* Hauteur fixe + safe area pour l'encoche / Dynamic Island */
+  height: calc(60px + env(safe-area-inset-top));
   background: var(--bg-surface);
   border-bottom: 1px solid var(--border);
   z-index: 200;
-  padding: 0 16px;
+  /* Padding horizontal + padding-top pour pousser le contenu sous l'encoche */
+  padding: env(safe-area-inset-top) 16px 0;
   align-items: center;
   justify-content: space-between;
   gap: 12px;

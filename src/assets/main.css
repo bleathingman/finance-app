@@ -111,7 +111,8 @@ a  { color: var(--accent); text-decoration: none; }
 @media (max-width: 768px) {
   .main-content {
     margin-left: 0;
-    padding: 80px 16px 24px; /* 60px topbar + 20px */
+    /* 60px topbar + safe area encoche/Dynamic Island + 20px */
+    padding: calc(60px + env(safe-area-inset-top) + 20px) 16px calc(24px + env(safe-area-inset-bottom));
   }
 }
 
