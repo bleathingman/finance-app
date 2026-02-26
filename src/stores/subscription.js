@@ -1,6 +1,6 @@
 import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
-import { doc, onSnapshot, setDoc, Timestamp } from 'firebase/firestore'
+import { doc, collection, onSnapshot, Timestamp } from 'firebase/firestore'
 import { db } from '@/firebase/config'
 import { loadStripe } from '@stripe/stripe-js'
 import { useAuthStore } from './auth'
@@ -34,8 +34,8 @@ export const PLANS = {
   premium: {
     id: 'premium',
     name: 'Premium',
-    price: 3.99,
-    priceLabel: '3,99€/mois',
+    price: 4.99,
+    priceLabel: '4,99€/mois',
     priceYearly: 39,
     priceYearlyLabel: '39€/an',
     stripePriceIdMonthly: import.meta.env.VITE_STRIPE_PREMIUM_MONTHLY || '',
@@ -60,8 +60,8 @@ export const PLANS = {
   pro: {
     id: 'pro',
     name: 'Pro',
-    price: 39,
-    priceLabel: '39€/mois',
+    price: 49,
+    priceLabel: '49€/mois',
     stripePriceIdMonthly: import.meta.env.VITE_STRIPE_PRO_MONTHLY || '',
     historyMonths: Infinity,
     features: [
@@ -96,6 +96,16 @@ export const useSubscriptionStore = defineStore('subscription', () => {
   const isPaid  = computed(() => planId.value !== 'free')
   const isPro   = computed(() => planId.value === 'pro')
 
+  // Mapping Price ID → Plan (côté client)
+  function getPlanFromPriceId(priceId) {
+    const premiumMonthly = import.meta.env.VITE_STRIPE_PREMIUM_MONTHLY
+    const premiumYearly  = import.meta.env.VITE_STRIPE_PREMIUM_YEARLY
+    const proMonthly     = import.meta.env.VITE_STRIPE_PRO_MONTHLY
+    if (priceId === premiumMonthly || priceId === premiumYearly) return 'premium'
+    if (priceId === proMonthly) return 'pro'
+    return 'premium' // fallback : toute sub active = au moins premium
+  }
+
   // Vérifie si une feature est disponible
   function can(feature) {
     return !!plan.value.limits[feature]
@@ -104,21 +114,36 @@ export const useSubscriptionStore = defineStore('subscription', () => {
   // Retourne les mois d'historique autorisés
   const historyMonths = computed(() => plan.value.limits.historyMonths)
 
-  // ─── Écoute Firestore pour le statut ────────────────────────────
+  // ─── Écoute Firestore — collection 'customers' (Firebase Extension) ──
+  // L'extension Stripe crée : customers/{uid}/subscriptions/{subId}
   let unsubSnap = null
   function startListening() {
     const uid = authStore.user?.uid
     if (!uid) return
-    const ref_ = doc(db, 'subscriptions', uid)
-    unsubSnap = onSnapshot(ref_, snap => {
-      if (snap.exists()) {
-        const data = snap.data()
-        planId.value    = data.planId    || 'free'
-        status.value    = data.status    || 'active'
-        periodEnd.value = data.periodEnd || null
+
+    // Écoute les subscriptions actives dans customers/{uid}/subscriptions
+    const subsRef = collection(db, 'customers', uid, 'subscriptions')
+    unsubSnap = onSnapshot(subsRef, snap => {
+      // Cherche une subscription active ou trialing
+      const activeSub = snap.docs
+        .map(d => ({ id: d.id, ...d.data() }))
+        .find(s => s.status === 'active' || s.status === 'trialing')
+
+      if (activeSub) {
+        // Récupère le planId depuis le Price ID
+        const priceId = activeSub.items?.[0]?.price?.id || activeSub.price?.id || ''
+        planId.value    = getPlanFromPriceId(priceId)
+        status.value    = activeSub.status
+        periodEnd.value = activeSub.current_period_end || null
       } else {
-        planId.value = 'free'
+        planId.value    = 'free'
+        status.value    = 'active'
+        periodEnd.value = null
       }
+      loading.value = false
+    }, () => {
+      // Erreur ou collection vide = plan gratuit
+      planId.value  = 'free'
       loading.value = false
     })
   }
@@ -129,20 +154,55 @@ export const useSubscriptionStore = defineStore('subscription', () => {
     loading.value = true
   }
 
-  // ─── Checkout Stripe ─────────────────────────────────────────────
+  // ─── Checkout via Firebase Extension ────────────────────────────
+  // L'extension crée automatiquement la session Checkout dans Firestore
+  // et retourne l'URL de paiement Stripe
   async function checkout(priceId) {
     if (!priceId) {
-      alert('Stripe non configuré — ajoute tes clés dans .env')
+      alert('Stripe non configuré — ajoute tes Price IDs dans les variables Vercel')
       return
     }
+    const uid = authStore.user?.uid
+    if (!uid) return
+
     const stripe = await loadStripe(STRIPE_PUBLIC_KEY)
     if (!stripe) return
 
-    // Firestore : on crée une session checkout via extension Stripe Firebase
-    // ou on redirige vers ton backend Stripe
-    // Pour une implémentation simple sans backend :
-    // Utilise Stripe Payment Links générés depuis le dashboard
-    window.open(`https://buy.stripe.com/${priceId}?client_reference_id=${authStore.user?.uid}`, '_blank')
+    try {
+      // Crée un document dans customers/{uid}/checkout_sessions
+      // L'extension Firebase écoute cette collection et crée la session Stripe
+      const { addDoc, collection: col, onSnapshot: onSnap } = await import('firebase/firestore')
+      const sessionsRef = col(db, 'customers', uid, 'checkout_sessions')
+
+      const docRef = await addDoc(sessionsRef, {
+        price:       priceId,
+        success_url: `${window.location.origin}/?checkout=success`,
+        cancel_url:  `${window.location.origin}/pricing`
+      })
+
+      // Attend que l'extension remplisse l'URL de session
+      return new Promise((resolve, reject) => {
+        const unsub = onSnap(docRef, snap => {
+          const data = snap.data()
+          if (data?.error) {
+            unsub()
+            reject(new Error(data.error.message))
+            return
+          }
+          if (data?.url) {
+            unsub()
+            // Redirige vers Stripe Checkout
+            window.location.href = data.url
+            resolve()
+          }
+        })
+        // Timeout après 30s
+        setTimeout(() => { unsub(); reject(new Error('Timeout')) }, 30000)
+      })
+    } catch (e) {
+      console.error('Checkout error:', e)
+      alert('Erreur lors du paiement. Réessaie.')
+    }
   }
 
   // ─── Portail client Stripe (gérer / annuler l'abo) ───────────────

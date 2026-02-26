@@ -39,6 +39,19 @@
     </transition>
   </teleport>
 
+  <!-- Toast succès paiement -->
+  <teleport to="body">
+    <transition name="toast">
+      <div v-if="showSuccessToast" class="toast-success">
+        <span>🎉</span>
+        <div>
+          <strong>Bienvenue en Premium !</strong>
+          <div style="font-size:12px;opacity:0.8;margin-top:2px">Toutes les features sont maintenant débloquées</div>
+        </div>
+      </div>
+    </transition>
+  </teleport>
+
   <!-- PWA install prompt -->
   <PwaPrompt />
   <!-- PWA update notification -->
@@ -46,7 +59,7 @@
 </template>
 
 <script setup>
-import { ref, watch } from 'vue'
+import { ref, watch, onMounted } from 'vue'
 import { useAuthStore } from '@/stores/auth'
 import Sidebar from '@/components/Sidebar.vue'
 import PwaPrompt from '@/components/PwaPrompt.vue'
@@ -62,6 +75,17 @@ watch(() => authStore.isAuthenticated, (isAuth) => {
     setTimeout(() => { showToast.value = false }, 4000)
   }
   prevAuth = isAuth
+})
+
+// Toast succès paiement
+const showSuccessToast = ref(false)
+onMounted(() => {
+  if (window.location.search.includes('checkout=success')) {
+    showSuccessToast.value = true
+    setTimeout(() => { showSuccessToast.value = false }, 6000)
+    // Nettoie l'URL
+    window.history.replaceState({}, '', window.location.pathname)
+  }
 })
 </script>
 
@@ -100,4 +124,17 @@ watch(() => authStore.isAuthenticated, (isAuth) => {
 .toast-leave-active { transition: all 0.25s ease }
 .toast-enter-from   { opacity: 0; transform: translateX(-50%) translateY(16px) }
 .toast-leave-to     { opacity: 0; transform: translateX(-50%) translateY(8px) }
+
+.toast-success {
+  position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%);
+  display: flex; align-items: center; gap: 12px;
+  padding: 16px 24px;
+  background: linear-gradient(135deg, rgba(0,229,160,0.15), rgba(0,229,160,0.05));
+  border: 1px solid var(--border-accent);
+  border-radius: var(--radius-lg);
+  box-shadow: 0 8px 32px rgba(0,229,160,0.2);
+  font-size: 14px; font-weight: 500; color: var(--text-primary);
+  z-index: 9999; white-space: nowrap;
+}
+.toast-success span { font-size: 24px; }
 </style>
