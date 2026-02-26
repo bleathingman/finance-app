@@ -102,6 +102,14 @@
     </div>
 
     <!-- Historique -->
+    <!-- Bannière limite historique -->
+    <div v-if="!subStore.can('advancedCharts')" class="history-limit-banner">
+      <span>🔒</span>
+      <span>Historique limité au <strong>mois en cours</strong> — 
+        <router-link to="/pricing" style="color:var(--accent);font-weight:700">Passer Premium</router-link>
+        pour accéder aux 12 derniers mois
+      </span>
+    </div>
     <div class="card">
       <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px;flex-wrap:wrap;gap:12px">
         <h3 style="font-family:var(--font-display)">Historique</h3>
@@ -239,8 +247,10 @@
 <script setup>
 import { ref, computed, onMounted, onUnmounted } from 'vue'
 import { useFinanceStore } from '@/stores/finance'
+import { useSubscriptionStore } from '@/stores/subscription'
 
 const financeStore = useFinanceStore()
+const subStore     = useSubscriptionStore()
 const showModal    = ref(false)
 const showQuickAdd = ref(false)
 const editMode     = ref(false)

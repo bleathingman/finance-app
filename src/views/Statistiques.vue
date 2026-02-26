@@ -8,7 +8,10 @@
         <p>Analyse complète de vos finances</p>
       </div>
       <div style="display:flex;gap:8px">
-        <button class="btn btn-ghost" @click="exportCSV">
+        <router-link v-if="!subStore.can('exportCsv')" to="/pricing" class="btn btn-ghost" style="border-color:var(--border-accent);color:var(--accent)">
+          💎 Export CSV/PDF
+        </router-link>
+        <button v-else class="btn btn-ghost" @click="exportCSV">
           <svg width="15" height="15" viewBox="0 0 24 24" fill="none">
             <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M7 10l5 5 5-5M12 15V3" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
           </svg>
@@ -102,6 +105,13 @@
     </div>
 
     <!-- Bilan mensuel détaillé -->
+    <PremiumGate
+      feature="advancedCharts"
+      icon="📊"
+      title="Bilan mensuel détaillé"
+      description="Visualisez votre historique mois par mois sur 12 mois : revenus, dépenses, épargne et taux d'épargne. Disponible avec Premium."
+      style="margin-bottom:28px"
+    >
     <div class="card" style="margin-bottom:28px">
       <h3 style="font-family:var(--font-display);margin-bottom:20px">Bilan mensuel</h3>
       <div v-if="!hasData" class="empty-chart">
@@ -138,8 +148,15 @@
         </div>
       </div>
     </div>
+    </PremiumGate>
 
     <!-- Projections -->
+    <PremiumGate
+      feature="forecast"
+      icon="🔮"
+      title="Projections & Insights"
+      description="Prévisions d'épargne sur 6 ou 12 mois et conseils personnalisés basés sur vos habitudes financières."
+    >
     <div class="grid-2">
       <!-- Projection 6/12 mois -->
       <div class="card">
@@ -186,6 +203,7 @@
         </div>
       </div>
     </div>
+    </PremiumGate>
 
   </div>
 </template>
@@ -194,6 +212,8 @@
 import { ref, computed, onMounted, onUnmounted, watch, nextTick } from 'vue'
 import { Chart, registerables } from 'chart.js'
 import { useFinanceStore } from '@/stores/finance'
+import { useSubscriptionStore } from '@/stores/subscription'
+import PremiumGate from '@/components/PremiumGate.vue'
 
 Chart.register(...registerables)
 

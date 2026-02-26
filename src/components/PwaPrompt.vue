@@ -326,3 +326,5 @@ function dismissIos() {
 .pwa-ios-modal.pwa-slide-enter-from { transform: translateY(100%); opacity: 1; }
 .pwa-ios-modal.pwa-slide-leave-to   { transform: translateY(100%); opacity: 1; }
 </style>
+
+<!-- ═══ Ce bloc s'ajoute à la fin du fichier — Update Toast ════════ -->
