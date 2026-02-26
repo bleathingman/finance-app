@@ -1,47 +1,63 @@
-# Configuration Stripe — FinanceFlow
+# Configuration Stripe Webhook — FinanceFlow
 
-## 1. Créer un compte Stripe
-https://dashboard.stripe.com/register
+## Variables Vercel à ajouter
 
-## 2. Créer tes produits dans Stripe Dashboard
-- Dashboard → Products → Add Product
-- Crée "FinanceFlow Premium"
-  - Ajoute un prix récurrent mensuel → note le Price ID (price_xxx)
-  - Ajoute un prix récurrent annuel  → note le Price ID (price_xxx)
-- Crée "FinanceFlow Pro"
-  - Ajoute un prix récurrent mensuel → note le Price ID
-
-## 3. Récupérer ta clé publique
-Dashboard → Developers → API Keys → Publishable key (pk_test_... ou pk_live_...)
-
-## 4. Configurer le portail client
-Dashboard → Settings → Billing → Customer portal → Activer → copier le lien
-
-## 5. Ajouter les variables dans Vercel
-Vercel → Settings → Environment Variables → Ajouter :
+### Déjà fait ✅
 - VITE_STRIPE_PUBLIC_KEY
+- VITE_STRIPE_PORTAL_URL
 - VITE_STRIPE_PREMIUM_MONTHLY
 - VITE_STRIPE_PREMIUM_YEARLY
 - VITE_STRIPE_PRO_MONTHLY
-- VITE_STRIPE_PORTAL_URL
 
-## 6. Mettre à jour les abonnements dans Firebase
-Quand un utilisateur paye, tu dois mettre à jour son document Firestore :
-Collection: subscriptions / Document: {uid}
-{
-  planId: "premium",        // "free" | "premium" | "pro"
-  status: "active",         // "active" | "canceled" | "past_due"
-  periodEnd: Timestamp,     // date de fin de l'abonnement
-  stripeCustomerId: "cus_xxx"
-}
+### À ajouter maintenant
 
-## 7. Webhook Stripe (pour automatiser)
-Pour automatiser la mise à jour Firestore quand quelqu'un souscrit/annule,
-tu peux utiliser :
-- Firebase Extensions : "Run Payments with Stripe" (le plus simple)
-- Ou une Vercel Serverless Function qui écoute les webhooks Stripe
+**1. Clé secrète Stripe**
+Stripe Dashboard → Developers → API Keys → Secret key
+```
+STRIPE_SECRET_KEY = sk_live_xxx
+```
 
-## Mode test
-Utilisez pk_test_... et des cartes de test Stripe :
-- Succès : 4242 4242 4242 4242
-- Refus  : 4000 0000 0000 0002
+**2. Mêmes Price IDs sans le préfixe VITE_**
+```
+STRIPE_PREMIUM_MONTHLY = price_xxx  (même valeur que VITE_STRIPE_PREMIUM_MONTHLY)
+STRIPE_PREMIUM_YEARLY  = price_xxx
+STRIPE_PRO_MONTHLY     = price_xxx
+```
+
+**3. Firebase Admin — clé de service**
+Firebase Console → Paramètres du projet (⚙️) → Comptes de service
+→ "Générer une nouvelle clé privée" → télécharge le JSON
+→ Ouvre le JSON et copie :
+```
+FIREBASE_PROJECT_ID    = valeur de "project_id"
+FIREBASE_CLIENT_EMAIL  = valeur de "client_email"
+FIREBASE_PRIVATE_KEY   = valeur de "private_key" (garde les \n)
+```
+
+**4. Secret webhook Stripe** (généré à l'étape suivante)
+```
+STRIPE_WEBHOOK_SECRET = whsec_xxx
+```
+
+---
+
+## Créer le webhook dans Stripe
+
+1. Stripe Dashboard → Developers → Webhooks → Add endpoint
+2. Endpoint URL : `https://TON-DOMAINE.vercel.app/api/webhook`
+3. Events à écouter :
+   - checkout.session.completed
+   - invoice.payment_succeeded
+   - invoice.payment_failed
+   - customer.subscription.deleted
+   - customer.subscription.updated
+4. Clique Create → copie le "Signing secret" (whsec_xxx)
+5. Ajoute-le dans Vercel : STRIPE_WEBHOOK_SECRET = whsec_xxx
+
+---
+
+## Tester le webhook
+
+Stripe Dashboard → Developers → Webhooks → ton endpoint
+→ "Send test webhook" → checkout.session.completed
+→ Vérifie les logs dans Vercel → Functions
