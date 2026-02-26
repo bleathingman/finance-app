@@ -56,7 +56,7 @@
           <div class="plan-icon">💎</div>
           <h3>{{ PLANS.premium.name }}</h3>
           <div class="plan-price">
-            <span class="price-amount">{{ yearly ? '3,25€' : '4,99€' }}</span>
+            <span class="price-amount">{{ yearly ? '3,25€' : '3,99€' }}</span>
             <span class="price-period">/mois</span>
           </div>
           <p v-if="yearly" style="font-size:13px;color:var(--accent);margin-top:4px;font-weight:600">Facturé 39€/an — économisez 21€</p>
