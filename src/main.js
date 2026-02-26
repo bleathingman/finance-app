@@ -29,10 +29,15 @@ onAuthStateChanged(auth, async (user) => {
   }
   // Démarre/arrête l'écoute du plan selon l'état auth
   const { useSubscriptionStore } = await import('@/stores/subscription')
-  const subStore = useSubscriptionStore()
+  const { useThemeStore }         = await import('@/stores/theme')
+  const subStore   = useSubscriptionStore()
+  const themeStore = useThemeStore()
   if (user) {
     subStore.startListening()
+    // Petite attente pour que le plan soit chargé avant d'appliquer le thème
+    setTimeout(() => themeStore.init(), 500)
   } else {
     subStore.stopListening()
+    themeStore.applyTheme('dark')
   }
 })

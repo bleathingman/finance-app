@@ -196,6 +196,7 @@ import { ref, computed, watch } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
 import { useSubscriptionStore } from '@/stores/subscription'
+import { useThemeStore } from '@/stores/theme'
 
 const router    = useRouter()
 const route     = useRoute()
@@ -205,6 +206,8 @@ const isCollapsed = ref(false)
 const isDark      = ref(true)
 const drawerOpen  = ref(false)
 const subStore    = useSubscriptionStore()
+const themeStore  = useThemeStore()
+themeStore.init()
 
 // Ferme le drawer automatiquement au changement de route
 watch(() => route.path, () => { drawerOpen.value = false })
@@ -265,6 +268,14 @@ const mainNav = [
 ]
 
 const analysisNav = [
+  {
+    name: 'themes', path: '/themes', label: 'Thèmes',
+    icon: `<svg width="18" height="18" viewBox="0 0 24 24" fill="none">
+      <circle cx="12" cy="12" r="10" stroke="currentColor" stroke-width="2"/>
+      <path d="M12 2a10 10 0 0 1 10 10" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+      <circle cx="12" cy="12" r="4" fill="currentColor" opacity="0.3"/>
+    </svg>`
+  },
   {
     name: 'objectifs', path: '/objectifs', label: 'Objectifs',
     icon: `<svg width="18" height="18" viewBox="0 0 24 24" fill="none">

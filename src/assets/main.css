@@ -65,6 +65,75 @@
   --border:         rgba(0,0,0,0.07);
 }
 
+
+/* ─── Thèmes Premium ─────────────────────────────────── */
+
+/* 1. Émeraude (défaut) — déjà défini dans :root */
+
+/* 2. Océan — bleu profond + cyan */
+[data-theme="ocean"] {
+  --bg-base:        #070d1a;
+  --bg-surface:     #0d1628;
+  --bg-elevated:    #152035;
+  --bg-hover:       #1e2e48;
+  --accent:         #4facfe;
+  --accent-dim:     rgba(79,172,254,0.12);
+  --accent-glow:    rgba(79,172,254,0.25);
+  --border-accent:  rgba(79,172,254,0.3);
+  --text-primary:   #e8f0fe;
+  --text-secondary: #7a90b8;
+  --text-muted:     #3a4d6b;
+  --border:         rgba(255,255,255,0.06);
+}
+
+/* 3. Coucher de soleil — violet + rose */
+[data-theme="sunset"] {
+  --bg-base:        #0f0a18;
+  --bg-surface:     #18102a;
+  --bg-elevated:    #23183a;
+  --bg-hover:       #2e2050;
+  --accent:         #c084fc;
+  --accent-dim:     rgba(192,132,252,0.12);
+  --accent-glow:    rgba(192,132,252,0.25);
+  --border-accent:  rgba(192,132,252,0.3);
+  --text-primary:   #f5eeff;
+  --text-secondary: #9b80c4;
+  --text-muted:     #4a3870;
+  --border:         rgba(255,255,255,0.06);
+}
+
+/* 4. Flamme — fond sombre + orange chaud */
+[data-theme="flame"] {
+  --bg-base:        #120a05;
+  --bg-surface:     #1e1208;
+  --bg-elevated:    #2a1a0d;
+  --bg-hover:       #3a2515;
+  --accent:         #ff9f43;
+  --accent-dim:     rgba(255,159,67,0.12);
+  --accent-glow:    rgba(255,159,67,0.25);
+  --border-accent:  rgba(255,159,67,0.3);
+  --text-primary:   #fff0e0;
+  --text-secondary: #c49a6a;
+  --text-muted:     #6b4a28;
+  --border:         rgba(255,255,255,0.06);
+}
+
+/* 5. Arctique — presque blanc + bleu glacier */
+[data-theme="arctic"] {
+  --bg-base:        #f5f8fc;
+  --bg-surface:     #ffffff;
+  --bg-elevated:    #eef4fb;
+  --bg-hover:       #ddeaf6;
+  --accent:         #0ea5e9;
+  --accent-dim:     rgba(14,165,233,0.1);
+  --accent-glow:    rgba(14,165,233,0.2);
+  --border-accent:  rgba(14,165,233,0.35);
+  --text-primary:   #0f2036;
+  --text-secondary: #4a6a8a;
+  --text-muted:     #94b4cc;
+  --border:         rgba(0,0,0,0.07);
+}
+
 /* ─── Reset ──────────────────────────────────────────── */
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
