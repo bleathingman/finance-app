@@ -34,8 +34,8 @@ export const PLANS = {
   premium: {
     id: 'premium',
     name: 'Premium',
-    price: 4.99,
-    priceLabel: '4,99€/mois',
+    price: 3.99,
+    priceLabel: '3,99€/mois',
     priceYearly: 39,
     priceYearlyLabel: '39€/an',
     stripePriceIdMonthly: import.meta.env.VITE_STRIPE_PREMIUM_MONTHLY || '',
@@ -60,8 +60,8 @@ export const PLANS = {
   pro: {
     id: 'pro',
     name: 'Pro',
-    price: 49,
-    priceLabel: '49€/mois',
+    price: 39,
+    priceLabel: '39€/mois',
     stripePriceIdMonthly: import.meta.env.VITE_STRIPE_PRO_MONTHLY || '',
     historyMonths: Infinity,
     features: [

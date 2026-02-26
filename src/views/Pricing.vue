@@ -75,7 +75,7 @@
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none">
               <path d="M20 12V22H4V12M22 7H2v5h20V7zM12 22V7M12 7H7.5a2.5 2.5 0 0 1 0-5C11 2 12 7 12 7zM12 7h4.5a2.5 2.5 0 0 0 0-5C13 2 12 7 12 7z" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
             </svg>
-            Commencer — {{ yearly ? '39€/an' : '4,99€/mois' }}
+            Commencer — {{ yearly ? '39€/an' : '3,99€/mois' }}
           </button>
         </div>
       </div>
@@ -86,7 +86,7 @@
           <div class="plan-icon">🚀</div>
           <h3>{{ PLANS.pro.name }}</h3>
           <div class="plan-price">
-            <span class="price-amount">49€</span>
+            <span class="price-amount">39€</span>
             <span class="price-period">/mois</span>
           </div>
           <p style="font-size:13px;color:var(--text-muted);margin-top:4px">Pour les professionnels</p>
