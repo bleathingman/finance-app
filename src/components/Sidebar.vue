@@ -195,6 +195,7 @@
 import { ref, computed, watch } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
+import { useSubscriptionStore } from '@/stores/subscription'
 
 const router    = useRouter()
 const route     = useRoute()
@@ -203,6 +204,7 @@ const authStore = useAuthStore()
 const isCollapsed = ref(false)
 const isDark      = ref(true)
 const drawerOpen  = ref(false)
+const subStore    = useSubscriptionStore()
 
 // Ferme le drawer automatiquement au changement de route
 watch(() => route.path, () => { drawerOpen.value = false })
@@ -385,6 +387,18 @@ const sunIcon = `<svg width="18" height="18" viewBox="0 0 24 24" fill="none">
 .collapsed .collapse-btn svg { transform: rotate(180deg); }
 
 @media (max-width: 768px) { .sidebar { display: none; } }
+
+.pricing-link {
+  background: var(--accent-dim) !important;
+  border: 1px solid var(--border-accent) !important;
+  color: var(--accent) !important;
+  margin-top: 8px;
+  font-weight: 600;
+}
+.pricing-link:hover {
+  background: rgba(0,229,160,0.2) !important;
+  box-shadow: 0 0 16px var(--accent-glow);
+}
 
 /* ═══ MOBILE TOP BAR ═════════════════════════════════════ */
 .mobile-topbar {

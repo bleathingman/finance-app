@@ -6,9 +6,14 @@ import {
 } from 'firebase/firestore'
 import { db } from '@/firebase/config'
 import { useAuthStore } from './auth'
+import { useSubscriptionStore } from './subscription'
 
 export const useFinanceStore = defineStore('finance', () => {
   const authStore = useAuthStore()
+  // Lazy-load pour éviter les dépendances circulaires
+  function getSubStore() {
+    try { return useSubscriptionStore() } catch { return null }
+  }
   const revenus   = ref([])
   const depenses  = ref([])
   const budgets   = ref([])
@@ -31,8 +36,22 @@ export const useFinanceStore = defineStore('finance', () => {
     return d.getMonth() === now.getMonth() && d.getFullYear() === now.getFullYear()
   }
 
-  const revenusDuMois  = computed(() => revenus.value.filter(estCeMois))
-  const depensesDuMois = computed(() => depenses.value.filter(estCeMois))
+  // Filtre selon la limite d'historique du plan
+  function estDansLimite(tx) {
+    if (!tx.createdAt) return false
+    const sub = getSubStore()
+    const months = sub?.historyMonths ?? 1
+    if (months === Infinity) return true
+    const d   = tx.createdAt.toDate ? tx.createdAt.toDate() : new Date(tx.createdAt)
+    const now = new Date()
+    const limitDate = new Date(now.getFullYear(), now.getMonth() - months + 1, 1)
+    return d >= limitDate
+  }
+
+  const revenusDuMois      = computed(() => revenus.value.filter(estCeMois))
+  const depensesDuMois     = computed(() => depenses.value.filter(estCeMois))
+  const revenusHistorique  = computed(() => revenus.value.filter(estDansLimite))
+  const depensesHistorique = computed(() => depenses.value.filter(estDansLimite))
 
   // ─── Totaux mois courant ───────────────────────────────────────────
   const totalRevenus = computed(() =>
@@ -191,7 +210,7 @@ export const useFinanceStore = defineStore('finance', () => {
 
   return {
     revenus, depenses, budgets, objectifs, loading,
-    totalRevenus, totalDepenses, solde, depensesParCategorie, revenusDuMois, depensesDuMois,
+    totalRevenus, totalDepenses, solde, depensesParCategorie, revenusDuMois, depensesDuMois, revenusHistorique, depensesHistorique,
     ajouterRevenu, modifierRevenu, supprimerRevenu, ecouter_revenus,
     ajouterDepense, modifierDepense, supprimerDepense, ecouter_depenses,
     definirBudget, ecouter_budgets,

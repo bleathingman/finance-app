@@ -7,21 +7,13 @@ import router from './router'
 import './assets/main.css'
 
 // ─── Capture PWA install prompt le plus tôt possible ─────────────
-// beforeinstallprompt se déclenche très tôt, avant que Vue soit monté
-// On le stocke dans window pour que PwaPrompt.vue puisse le récupérer
 window.__pwaPrompt = null
 window.addEventListener('beforeinstallprompt', (e) => {
   e.preventDefault()
   window.__pwaPrompt = e
-  // Notifie PwaPrompt s'il est déjà monté
   window.dispatchEvent(new CustomEvent('pwa-prompt-ready'))
-  console.log('✅ PWA installable — prompt capturé')
 })
-
-window.addEventListener('appinstalled', () => {
-  window.__pwaPrompt = null
-  console.log('✅ PWA installée avec succès')
-})
+window.addEventListener('appinstalled', () => { window.__pwaPrompt = null })
 
 // ─── Montage Vue ──────────────────────────────────────────────────
 const pinia = createPinia()
@@ -30,6 +22,17 @@ app.use(pinia)
 app.use(router)
 
 let mounted = false
-onAuthStateChanged(auth, () => {
-  if (!mounted) { app.mount('#app'); mounted = true }
+onAuthStateChanged(auth, async (user) => {
+  if (!mounted) {
+    app.mount('#app')
+    mounted = true
+  }
+  // Démarre/arrête l'écoute du plan selon l'état auth
+  const { useSubscriptionStore } = await import('@/stores/subscription')
+  const subStore = useSubscriptionStore()
+  if (user) {
+    subStore.startListening()
+  } else {
+    subStore.stopListening()
+  }
 })

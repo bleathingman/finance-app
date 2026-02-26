@@ -198,6 +198,7 @@ import { useFinanceStore } from '@/stores/finance'
 Chart.register(...registerables)
 
 const financeStore = useFinanceStore()
+const subStore     = useSubscriptionStore()
 
 // ─── State ────────────────────────────────────────────────────────
 const periode       = ref(6)
