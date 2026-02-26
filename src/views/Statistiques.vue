@@ -8,22 +8,26 @@
         <p>Analyse complète de vos finances</p>
       </div>
       <div style="display:flex;gap:8px">
+        <!-- Non premium → un seul bouton CTA -->
         <router-link v-if="!subStore.can('exportCsv')" to="/pricing" class="btn btn-ghost" style="border-color:var(--border-accent);color:var(--accent)">
           💎 Export CSV/PDF
         </router-link>
-        <button v-else class="btn btn-ghost" @click="exportCSV">
-          <svg width="15" height="15" viewBox="0 0 24 24" fill="none">
-            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M7 10l5 5 5-5M12 15V3" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-          </svg>
-          Export CSV
-        </button>
-        <button class="btn btn-ghost" @click="exportPDF">
-          <svg width="15" height="15" viewBox="0 0 24 24" fill="none">
-            <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
-            <polyline points="14 2 14 8 20 8" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
-          </svg>
-          Export PDF
-        </button>
+        <!-- Premium → deux boutons séparés -->
+        <template v-else>
+          <button class="btn btn-ghost" @click="exportCSV">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none">
+              <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M7 10l5 5 5-5M12 15V3" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+            Export CSV
+          </button>
+          <button class="btn btn-ghost" @click="exportPDF">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none">
+              <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+              <polyline points="14 2 14 8 20 8" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+            </svg>
+            Export PDF
+          </button>
+        </template>
       </div>
     </div>
 
