@@ -385,20 +385,53 @@ function splitCSVLine(line, sep) {
 
 function autoMap(cols) {
   const lower = cols.map(c => c.toLowerCase())
-  // Date
+
+  // Date — première colonne qui ressemble à une date dans les valeurs
   const dateIdx = lower.findIndex(c => c.includes('date') || c.includes('dat'))
   if (dateIdx >= 0) mapping.value.date = cols[dateIdx]
-  // Montant
-  const montantIdx = lower.findIndex(c =>
-    c.includes('montant') || c.includes('amount') || c.includes('valeur') || c.includes('solde')
-  )
-  if (montantIdx >= 0) mapping.value.montant = cols[montantIdx]
-  // Description
+  else {
+    // Détecte par les valeurs : cherche une colonne avec des dates DD/MM/YYYY
+    const dateValIdx = cols.findIndex((col, i) => {
+      const vals = rawRows.value.slice(0, 5).map(r => r[col] || '')
+      return vals.some(v => /^\d{2}[\/\-]\d{2}[\/\-]\d{4}$/.test(v.trim()))
+    })
+    if (dateValIdx >= 0) mapping.value.date = cols[dateValIdx]
+  }
+
+  // Montant — détecte par les valeurs : cherche une colonne avec +/- et virgule/point décimal
+  const montantValIdx = cols.findIndex(col => {
+    const vals = rawRows.value.slice(0, 10).map(r => r[col] || '')
+    // Doit contenir des nombres avec virgule ou point, et potentiellement + ou -
+    const numericCount = vals.filter(v => /^[+-]?\s*\d+[,\.]\d+$/.test(v.trim())).length
+    return numericCount >= 2
+  })
+  if (montantValIdx >= 0) {
+    mapping.value.montant = cols[montantValIdx]
+  } else {
+    // Fallback sur le nom de colonne
+    const montantIdx = lower.findIndex(c =>
+      c.includes('montant') || c.includes('amount') || c.includes('valeur')
+    )
+    if (montantIdx >= 0) mapping.value.montant = cols[montantIdx]
+  }
+
+  // Description — préfère "libellé" puis détecte les longues chaînes texte
   const descIdx = lower.findIndex(c =>
     c.includes('libellé') || c.includes('libelle') || c.includes('description') ||
-    c.includes('label') || c.includes('opération') || c.includes('operation')
+    c.includes('label') || c.includes('opération') || c.includes('operation') || c.includes('motif')
   )
-  if (descIdx >= 0) mapping.value.description = cols[descIdx]
+  if (descIdx >= 0) {
+    mapping.value.description = cols[descIdx]
+  } else {
+    // Détecte la colonne avec les textes les plus longs
+    const descValIdx = cols.findIndex(col => {
+      const vals = rawRows.value.slice(0, 5).map(r => r[col] || '')
+      const avgLen = vals.reduce((s, v) => s + v.length, 0) / (vals.length || 1)
+      return avgLen > 10 && !cols.indexOf(col) === mapping.value.date
+    })
+    if (descValIdx >= 0) mapping.value.description = cols[descValIdx]
+  }
+
   // Débit séparé
   const debitIdx = lower.findIndex(c => c.includes('débit') || c.includes('debit'))
   if (debitIdx >= 0) mapping.value.debit = cols[debitIdx]
@@ -412,13 +445,22 @@ function buildPreview() {
     const montantRaw = row[mapping.value.montant] || ''
     const debitRaw = mapping.value.debit ? row[mapping.value.debit] || '' : ''
 
-    // Parse montant
-    let montant = parseFloat(
-      (debitRaw || montantRaw)
-        .replace(/\s/g, '')
-        .replace(',', '.')
-        .replace(/[^0-9.\-]/g, '')
-    )
+    // Parse montant — gère +296,24 / -1 234,56 / 1.234,56
+    let montantStr = (debitRaw || montantRaw).trim()
+    // Retire espaces insécables et normaux
+    montantStr = montantStr.replace(/[\s\u00a0]/g, '')
+    // Détermine si c'est format européen (1.234,56) ou anglais (1,234.56)
+    const hasCommaDecimal = /,\d{1,2}$/.test(montantStr)
+    if (hasCommaDecimal) {
+      // Format européen : supprime les points de milliers, remplace virgule par point
+      montantStr = montantStr.replace(/\./g, '').replace(',', '.')
+    } else {
+      // Format anglais : supprime les virgules de milliers
+      montantStr = montantStr.replace(/,/g, '')
+    }
+    // Garde signe + ou -
+    montantStr = montantStr.replace(/[^0-9.\-\+]/g, '')
+    let montant = parseFloat(montantStr)
     if (isNaN(montant)) return null
 
     // Parse date
