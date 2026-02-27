@@ -245,7 +245,7 @@
                 <button class="type-btn" :class="{ active: row.type === 'depense' }" @click="row.type = 'depense'; row.selected = !row.outOfRange">Dépense</button>
                 <button class="type-btn revenu" :class="{ active: row.type === 'revenu' }" @click="row.type = 'revenu'; row.selected = !row.outOfRange">Revenu</button>
               </div>
-              <select class="input import-cat" v-model="row.categorie">
+              <select class="input import-cat" v-model="row.categorie" @change="onCategorieChange(row, $event)">
                 <option v-for="cat in (row.type === 'depense' ? categoriesDepense : categoriesRevenu)"
                   :key="cat.nom" :value="cat.nom">{{ cat.emoji }} {{ cat.nom }}</option>
               </select>
@@ -258,6 +258,26 @@
           <div v-if="filteredRows.length === 0" style="text-align:center;padding:40px;color:var(--text-muted)">
             Aucune transaction pour ce filtre
           </div>
+
+          <!-- Popup règle de catégorisation -->
+          <transition name="slide-down">
+            <div v-if="rulePopup.show" class="rule-popup">
+              <div style="font-size:18px">🏷️</div>
+              <div style="flex:1">
+                <div style="font-weight:700;font-size:14px">Appliquer à toutes les transactions similaires ?</div>
+                <div style="font-size:13px;color:var(--text-muted);margin-top:2px">
+                  Tout ce qui contient <strong>"{{ rulePopup.keyword }}"</strong> → <strong>{{ rulePopup.categorie }}</strong>
+                  <span style="color:var(--text-muted)"> ({{ rulePopup.matchCount }} transaction(s) dans l'import)</span>
+                </div>
+              </div>
+              <div style="display:flex;gap:8px;flex-shrink:0">
+                <button class="btn btn-ghost" style="font-size:12px;padding:6px 12px" @click="rulePopup.show = false">Ignorer</button>
+                <button class="btn btn-primary" style="font-size:12px;padding:6px 12px" @click="applyRule">
+                  ✓ Appliquer{{ rulePopup.firestoreCount ? ' + ' + rulePopup.firestoreCount + ' existantes' : '' }}
+                </button>
+              </div>
+            </div>
+          </transition>
         </div>
       </div>
 
@@ -303,6 +323,10 @@ const importedCount = ref(0)
 const filterType    = ref('all')
 const filterMonth   = ref('')
 const fileRef       = ref(null)
+
+// ─── Règles de catégorisation ─────────────────────────────────────
+const savedRules    = ref([])  // règles mémorisées depuis Firestore
+const rulePopup     = ref({ show: false, keyword: '', categorie: '', type: '', matchCount: 0, firestoreCount: 0 })
 
 const mapping = ref({ date: '', description: '', montant: '', debit: '', credit: '' })
 const previewRows = ref([])
@@ -649,7 +673,123 @@ function parseDate(str) {
   return null
 }
 
+// ─── Système de règles ────────────────────────────────────────────
+async function loadSavedRules() {
+  const uid = authStore.user?.uid
+  if (!uid) return
+  try {
+    const snap = await getDocs(collection(db, 'categorie_rules', uid, 'rules'))
+    savedRules.value = snap.docs.map(d => ({ id: d.id, ...d.data() }))
+  } catch(e) { console.warn('Erreur chargement règles:', e) }
+}
+
+function applySavedRules(desc, type) {
+  // Cherche une règle mémorisée qui match
+  const d = desc.toLowerCase()
+  for (const rule of savedRules.value) {
+    if (rule.type && rule.type !== type) continue
+    if (d.includes(rule.keyword.toLowerCase())) return rule.categorie
+  }
+  return null
+}
+
+function extractKeyword(desc) {
+  // Extrait le mot-clé le plus significatif de la description
+  // Supprime les mots génériques bancaires
+  const cleaned = desc
+    .replace(/paiement par carte/gi, '')
+    .replace(/virement/gi, '')
+    .replace(/x\d{4}/gi, '')
+    .replace(/\d{2}\/\d{2}/g, '')
+    .replace(/\s+/g, ' ')
+    .trim()
+  // Prend les 2 premiers mots significatifs
+  const words = cleaned.split(/\s+/).filter(w => w.length > 2)
+  return words.slice(0, 2).join(' ').toUpperCase() || desc.slice(0, 15).toUpperCase()
+}
+
+async function onCategorieChange(row, event) {
+  const newCat = event.target.value
+  const keyword = extractKeyword(row.description)
+  if (!keyword) return
+
+  // Compte les lignes similaires dans l'import
+  const matchInImport = previewRows.value.filter(r =>
+    r !== row &&
+    !r.outOfRange &&
+    r.description.toLowerCase().includes(keyword.toLowerCase())
+  )
+
+  // Compte les transactions existantes dans Firestore
+  let firestoreCount = 0
+  try {
+    const uid = authStore.user?.uid
+    if (uid) {
+      const collName = row.type === 'depense' ? 'depenses' : 'revenus'
+      const snap = await getDocs(query(
+        collection(db, collName),
+        where('uid', '==', uid),
+        where('categorie', '==', 'Autres')
+      ))
+      firestoreCount = snap.docs.filter(d =>
+        (d.data().description || '').toLowerCase().includes(keyword.toLowerCase())
+      ).length
+    }
+  } catch(e) {}
+
+  if (matchInImport.length === 0 && firestoreCount === 0) return
+
+  rulePopup.value = {
+    show: true,
+    keyword,
+    categorie: newCat,
+    type: row.type,
+    matchCount: matchInImport.length,
+    firestoreCount,
+    row
+  }
+}
+
+async function applyRule() {
+  const { keyword, categorie, type, row } = rulePopup.value
+  const uid = authStore.user?.uid
+  rulePopup.value.show = false
+
+  // 1. Applique dans l'import en cours
+  previewRows.value.forEach(r => {
+    if (r !== row && !r.outOfRange && r.description.toLowerCase().includes(keyword.toLowerCase())) {
+      r.categorie = categorie
+    }
+  })
+
+  // 2. Met à jour Firestore — batch write
+  if (uid) {
+    try {
+      const collName = type === 'depense' ? 'depenses' : 'revenus'
+      const snap = await getDocs(query(collection(db, collName), where('uid', '==', uid)))
+      const toUpdate = snap.docs.filter(d =>
+        (d.data().description || '').toLowerCase().includes(keyword.toLowerCase())
+      )
+      if (toUpdate.length > 0) {
+        const batch = writeBatch(db)
+        toUpdate.forEach(d => batch.update(d.ref, { categorie }))
+        await batch.commit()
+      }
+    } catch(e) { console.error('Erreur batch update:', e) }
+
+    // 3. Sauvegarde la règle
+    try {
+      const ruleRef = doc(collection(db, 'categorie_rules', uid, 'rules'))
+      await setDoc(ruleRef, { keyword, categorie, type, createdAt: new Date() })
+      savedRules.value.push({ keyword, categorie, type })
+    } catch(e) { console.error('Erreur sauvegarde règle:', e) }
+  }
+}
+
 function autoCategorize(desc, type) {
+  // D'abord les règles mémorisées
+  const saved = applySavedRules(desc, type)
+  if (saved) return saved
   const d = desc.toLowerCase()
   if (type === 'revenu') {
     if (/salaire|paie|virement.*employeur|employeur/i.test(d)) return 'Salaire'
@@ -658,7 +798,7 @@ function autoCategorize(desc, type) {
     return 'Autres'
   }
   if (/loyer|logement|habitation/i.test(d)) return 'Loyer'
-  if (/carrefour|leclerc|lidl|aldi|casino|super|hyper|monop|market|epicerie|resto|restaurant|mcdonald|burger|pizza|sushi|kebab|alimentat/i.test(d)) return 'Nourriture'
+  if (/carrefour|leclerc|lidl|aldi|casino|super|hyper|monop|market|epicerie|resto|restaurant|mcdonald|burger|pizza|aquacafe|ubereat|sushi|kebab|alimentat/i.test(d)) return 'Nourriture'
   if (/sncf|ratp|train|metro|taxi|uber|blablacar|parking|essence|carburant|station|autoroute|peage|semitan/i.test(d)) return 'Transport'
   if (/netflix|spotify|amazon|disney|prime|apple|google|microsoft|abonne/i.test(d)) return 'Abonnements'
   if (/pharmacie|medecin|docteur|hopital|mutuelle|sante|secu/i.test(d)) return 'Santé'
@@ -720,6 +860,8 @@ function reset() {
   filterType.value = 'all'
   filterMonth.value = ''
 }
+
+onMounted(() => { loadSavedRules() })
 </script>
 
 <style scoped>
@@ -775,9 +917,19 @@ function reset() {
 .success-icon { font-size:64px }
 .success-screen h2 { font-family:var(--font-display);font-size:2rem }
 
+.rule-popup {
+  display:flex;align-items:center;gap:12px;
+  padding:14px 16px;margin-top:12px;
+  background:var(--bg-elevated);
+  border:1px solid var(--border-accent);
+  border-radius:var(--radius);
+  border-left:3px solid var(--accent);
+}
+
 @media (max-width:768px) {
   .mapping-grid { grid-template-columns:1fr }
   .import-row { grid-template-columns:20px 1fr 80px }
   .import-date, .import-cat, .type-btn { display:none }
+  .rule-popup { flex-direction:column;align-items:flex-start }
 }
 </style>
