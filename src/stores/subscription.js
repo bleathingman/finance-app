@@ -170,44 +170,44 @@ export const useSubscriptionStore = defineStore('subscription', () => {
     const uid = authStore.user?.uid
     if (!uid) return
 
-    const stripe = await loadStripe(STRIPE_PUBLIC_KEY)
-    if (!stripe) return
-
     try {
-      // Crée un document dans customers/{uid}/checkout_sessions
-      // L'extension Firebase écoute cette collection et crée la session Stripe
       const { addDoc, collection: col, onSnapshot: onSnap } = await import('firebase/firestore')
       const sessionsRef = col(db, 'customers', uid, 'checkout_sessions')
 
       const docRef = await addDoc(sessionsRef, {
-        price:                  priceId,
-        success_url:            `${window.location.origin}/?checkout=success`,
-        cancel_url:             `${window.location.origin}/pricing`,
-        allow_promotion_codes:  true
+        price:                 priceId,
+        success_url:           `${window.location.origin}/?checkout=success`,
+        cancel_url:            `${window.location.origin}/pricing`,
+        allow_promotion_codes: true
       })
 
-      // Attend que l'extension remplisse l'URL de session
+      // Attend que l'extension Firebase remplisse l'URL de session Stripe
       return new Promise((resolve, reject) => {
         const unsub = onSnap(docRef, snap => {
           const data = snap.data()
-          if (data?.error) {
+          if (!data) return
+          if (data.error) {
             unsub()
+            console.error('Stripe error:', data.error)
+            alert('Erreur Stripe : ' + (data.error.message || data.error))
             reject(new Error(data.error.message))
             return
           }
-          if (data?.url) {
+          if (data.url) {
             unsub()
-            // Redirige vers Stripe Checkout
-            window.location.href = data.url
+            window.location.assign(data.url)
             resolve()
           }
         })
-        // Timeout après 30s
-        setTimeout(() => { unsub(); reject(new Error('Timeout')) }, 30000)
+        setTimeout(() => {
+          unsub()
+          reject(new Error('Timeout — l\'extension Firebase n\'a pas répondu'))
+          alert('Timeout — vérifie que l\'extension Stripe Firebase est bien installée')
+        }, 30000)
       })
     } catch (e) {
       console.error('Checkout error:', e)
-      alert('Erreur lors du paiement. Réessaie.')
+      alert('Erreur lors du paiement : ' + e.message)
     }
   }
 
