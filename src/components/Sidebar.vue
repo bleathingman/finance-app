@@ -43,6 +43,15 @@
     </nav>
 
     <div class="sidebar-bottom">
+      <!-- Badge plan actuel -->
+      <router-link to="/pricing" class="plan-badge-link" :title="isCollapsed ? subStore.plan.name : ''">
+        <span class="plan-badge-icon">{{ subStore.isPaid ? (subStore.isPro ? '🚀' : '💎') : '🌱' }}</span>
+        <span class="nav-text plan-badge-text">
+          <span class="plan-badge-name">{{ subStore.plan.name }}</span>
+          <span v-if="!subStore.isPaid" class="plan-badge-cta">Passer Premium →</span>
+        </span>
+      </router-link>
+
       <button class="theme-toggle" @click="toggleTheme">
         <span class="nav-icon" v-html="isDark ? moonIcon : sunIcon"></span>
         <span class="nav-text">{{ isDark ? 'Mode clair' : 'Mode sombre' }}</span>
@@ -175,6 +184,16 @@
                 <span class="user-email">{{ authStore.user.email }}</span>
               </div>
             </div>
+            <!-- Badge plan mobile -->
+            <router-link to="/pricing" class="drawer-plan-badge" @click="drawerOpen = false">
+              <span>{{ subStore.isPaid ? (subStore.isPro ? '🚀' : '💎') : '🌱' }}</span>
+              <div>
+                <div style="font-weight:700;font-size:13px">{{ subStore.plan.name }}</div>
+                <div v-if="!subStore.isPaid" style="font-size:11px;color:var(--accent)">Passer Premium →</div>
+                <div v-else style="font-size:11px;color:var(--text-muted)">Abonnement actif</div>
+              </div>
+            </router-link>
+
             <button class="drawer-logout" @click="handleLogout">
               <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
                 <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4M16 17l5-5-5-5M21 12H9"
@@ -398,6 +417,41 @@ const sunIcon = `<svg width="18" height="18" viewBox="0 0 24 24" fill="none">
 .collapsed .collapse-btn svg { transform: rotate(180deg); }
 
 @media (max-width: 768px) { .sidebar { display: none; } }
+
+.plan-badge-link {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 12px;
+  margin-bottom: 6px;
+  background: var(--accent-dim);
+  border: 1px solid var(--border-accent);
+  border-radius: var(--radius);
+  text-decoration: none;
+  transition: all var(--transition);
+  overflow: hidden;
+}
+.plan-badge-link:hover { background: rgba(0,229,160,0.2); }
+.plan-badge-icon { font-size: 18px; flex-shrink: 0; }
+.plan-badge-text { display: flex; flex-direction: column; gap: 1px; min-width: 0; }
+.plan-badge-name { font-size: 13px; font-weight: 700; color: var(--accent); }
+.plan-badge-cta  { font-size: 11px; color: var(--text-muted); }
+
+.drawer-plan-badge {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 16px;
+  margin-bottom: 8px;
+  background: var(--accent-dim);
+  border: 1px solid var(--border-accent);
+  border-radius: var(--radius);
+  text-decoration: none;
+  color: var(--text-primary);
+  font-size: 20px;
+  transition: all var(--transition);
+}
+.drawer-plan-badge:hover { background: rgba(0,229,160,0.2); }
 
 .pricing-link {
   background: var(--accent-dim) !important;
