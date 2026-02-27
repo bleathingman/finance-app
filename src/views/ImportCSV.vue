@@ -298,8 +298,8 @@
 </template>
 
 <script setup>
-import { ref, computed } from 'vue'
-import { addDoc, collection, Timestamp } from 'firebase/firestore'
+import { ref, computed, onMounted } from 'vue'
+import { addDoc, collection, Timestamp, getDocs, query, where, writeBatch, doc, setDoc } from 'firebase/firestore'
 import { db } from '@/firebase/config'
 import { useAuthStore } from '@/stores/auth'
 import { useSubscriptionStore } from '@/stores/subscription'
@@ -798,7 +798,7 @@ function autoCategorize(desc, type) {
     return 'Autres'
   }
   if (/loyer|logement|habitation/i.test(d)) return 'Loyer'
-  if (/carrefour|leclerc|lidl|aldi|casino|super|hyper|monop|market|epicerie|resto|restaurant|mcdonald|burger|pizza|aquacafe|ubereat|sushi|kebab|alimentat/i.test(d)) return 'Nourriture'
+  if (/carrefour|leclerc|lidl|aldi|casino|super|hyper|monop|market|epicerie|resto|restaurant|mcdonald|burger|pizza|sushi|kebab|alimentat/i.test(d)) return 'Nourriture'
   if (/sncf|ratp|train|metro|taxi|uber|blablacar|parking|essence|carburant|station|autoroute|peage|semitan/i.test(d)) return 'Transport'
   if (/netflix|spotify|amazon|disney|prime|apple|google|microsoft|abonne/i.test(d)) return 'Abonnements'
   if (/pharmacie|medecin|docteur|hopital|mutuelle|sante|secu/i.test(d)) return 'Santé'
