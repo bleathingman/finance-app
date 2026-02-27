@@ -124,15 +124,20 @@ export const useSubscriptionStore = defineStore('subscription', () => {
     // Écoute les subscriptions actives dans customers/{uid}/subscriptions
     const subsRef = collection(db, 'customers', uid, 'subscriptions')
     unsubSnap = onSnapshot(subsRef, snap => {
+
       // Cherche une subscription active ou trialing
       const activeSub = snap.docs
         .map(d => ({ id: d.id, ...d.data() }))
         .find(s => s.status === 'active' || s.status === 'trialing')
 
       if (activeSub) {
-        // Récupère le planId depuis le Price ID
-        const priceId = activeSub.items?.[0]?.price?.id || activeSub.price?.id || ''
-        planId.value    = getPlanFromPriceId(priceId)
+        // Cas manuel (créateur de l'app) : price = "manual" → Pro direct
+        const priceId = activeSub.items?.[0]?.price?.id || activeSub.price?.id || activeSub.price || ''
+        if (priceId === 'manual') {
+          planId.value = 'pro'
+        } else {
+          planId.value = getPlanFromPriceId(priceId)
+        }
         status.value    = activeSub.status
         periodEnd.value = activeSub.current_period_end || null
       } else {
@@ -141,7 +146,7 @@ export const useSubscriptionStore = defineStore('subscription', () => {
         periodEnd.value = null
       }
       loading.value = false
-    }, () => {
+    }, (err) => {
       // Erreur ou collection vide = plan gratuit
       planId.value  = 'free'
       loading.value = false
@@ -175,9 +180,10 @@ export const useSubscriptionStore = defineStore('subscription', () => {
       const sessionsRef = col(db, 'customers', uid, 'checkout_sessions')
 
       const docRef = await addDoc(sessionsRef, {
-        price:       priceId,
-        success_url: `${window.location.origin}/?checkout=success`,
-        cancel_url:  `${window.location.origin}/pricing`
+        price:                  priceId,
+        success_url:            `${window.location.origin}/?checkout=success`,
+        cancel_url:             `${window.location.origin}/pricing`,
+        allow_promotion_codes:  true
       })
 
       // Attend que l'extension remplisse l'URL de session
