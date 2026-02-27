@@ -288,6 +288,12 @@ const mainNav = [
 
 const analysisNav = [
   {
+    name: 'import', path: '/import', label: 'Import bancaire',
+    icon: `<svg width="18" height="18" viewBox="0 0 24 24" fill="none">
+      <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M7 10l5 5 5-5M12 15V3" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+    </svg>`
+  },
+  {
     name: 'themes', path: '/themes', label: 'Thèmes',
     icon: `<svg width="18" height="18" viewBox="0 0 24 24" fill="none">
       <circle cx="12" cy="12" r="10" stroke="currentColor" stroke-width="2"/>
