@@ -432,9 +432,17 @@ function autoMap(cols) {
     if (descValIdx >= 0) mapping.value.description = cols[descValIdx]
   }
 
-  // Débit séparé
-  const debitIdx = lower.findIndex(c => c.includes('débit') || c.includes('debit'))
-  if (debitIdx >= 0) mapping.value.debit = cols[debitIdx]
+  // Débit et Crédit séparés
+  const debitIdx  = lower.findIndex(c => c.includes('débit') || c.includes('debit'))
+  const creditIdx = lower.findIndex(c => c.includes('crédit') || c.includes('credit'))
+
+  if (debitIdx >= 0 && creditIdx >= 0) {
+    // Colonnes séparées → on va les fusionner dans buildPreview
+    mapping.value.debit   = cols[debitIdx]
+    mapping.value.montant = cols[creditIdx] // crédit = montant principal
+  } else if (debitIdx >= 0) {
+    mapping.value.debit = cols[debitIdx]
+  }
 }
 
 // ─── Preview ────────────────────────────────────────────────────
@@ -442,11 +450,24 @@ function buildPreview() {
   previewRows.value = rawRows.value.map(row => {
     const dateRaw  = row[mapping.value.date] || ''
     const descRaw  = row[mapping.value.description] || ''
-    const montantRaw = row[mapping.value.montant] || ''
-    const debitRaw = mapping.value.debit ? row[mapping.value.debit] || '' : ''
+    const creditRaw = row[mapping.value.montant] || ''
+    const debitRaw  = mapping.value.debit ? row[mapping.value.debit] || '' : ''
 
-    // Parse montant — gère +296,24 / -1 234,56 / 1.234,56
-    let montantStr = (debitRaw || montantRaw).trim()
+    // Fusionne débit et crédit si colonnes séparées
+    // Débit = dépense (négatif), Crédit = revenu (positif)
+    let montantStr = ''
+    if (debitRaw.trim() && creditRaw.trim()) {
+      // Les deux colonnes existent — prend celui qui a une valeur
+      const debitVal  = debitRaw.trim().replace(/[\s\u00a0]/g, '')
+      const creditVal = creditRaw.trim().replace(/[\s\u00a0]/g, '')
+      if (debitVal && debitVal !== '' && parseFloat(debitVal.replace(',', '.').replace(/[^0-9.\-]/g, '')) !== 0) {
+        montantStr = '-' + debitVal.replace(/^[+-]/, '') // force négatif
+      } else if (creditVal && creditVal !== '') {
+        montantStr = '+' + creditVal.replace(/^[+-]/, '') // force positif
+      }
+    } else {
+      montantStr = (debitRaw || creditRaw).trim()
+    }
     // Retire espaces insécables et normaux
     montantStr = montantStr.replace(/[\s\u00a0]/g, '')
     // Détermine si c'est format européen (1.234,56) ou anglais (1,234.56)
