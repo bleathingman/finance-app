@@ -178,7 +178,8 @@ export const useSubscriptionStore = defineStore('subscription', () => {
         price:                 priceId,
         success_url:           `${window.location.origin}/?checkout=success`,
         cancel_url:            `${window.location.origin}/pricing`,
-        allow_promotion_codes: true
+        allow_promotion_codes: true,
+        client_reference_id:   uid
       })
 
       // Attend que l'extension Firebase remplisse l'URL de session Stripe
