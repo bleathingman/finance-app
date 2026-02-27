@@ -78,8 +78,8 @@
               <label style="font-size:12px;color:var(--text-muted);display:block;margin-bottom:6px">Encodage</label>
               <select class="input" style="padding:6px 10px;font-size:12px" v-model="encoding" @change="reloadFile">
                 <option value="utf-8">UTF-8</option>
-                <option value="iso-8859-1">ISO-8859-1 (Latin-1)</option>
-                <option value="windows-1252">Windows-1252</option>
+                <option value="iso-8859-1">ISO-8859-1 — Crédit Agricole, CIC, LCL</option>
+                <option value="windows-1252">Windows-1252 — BNP, Société Générale</option>
               </select>
             </div>
           </div>
@@ -425,41 +425,92 @@ function onFileChange(e) {
 function loadFile(file) {
   fileRef.value = file
   fileName.value = file.name
-  const reader = new FileReader()
-  reader.onload = (e) => {
-    rawContent.value = e.target.result
-    parseCSV()
-    step.value = 2
+  // Sniffe l'encodage : si caractères corrompus en UTF-8 → ISO-8859-1 (Crédit Agricole, CIC...)
+  const sniff = new FileReader()
+  sniff.onload = (e) => {
+    const s = e.target.result.slice(0, 600)
+    if (/�/.test(s) || /[ÃÂ][©€¨²°àèéêù]/.test(s)) encoding.value = 'iso-8859-1'
+    const reader = new FileReader()
+    reader.onload = (e2) => { rawContent.value = e2.target.result; parseCSV(); step.value = 2 }
+    reader.readAsText(file, encoding.value)
   }
-  reader.readAsText(file, encoding.value)
+  sniff.readAsText(file, 'utf-8')
 }
 function reloadFile() {
   if (!fileRef.value) return
   const reader = new FileReader()
-  reader.onload = (e) => { rawContent.value = e.target.result; parseCSV() }
+  reader.onload = (e) => {
+    rawContent.value = e.target.result
+    parseCSV()
+  }
   reader.readAsText(fileRef.value, encoding.value)
 }
 
 // ─── CSV Parsing ───────────────────────────────────────────────────
 function parseCSV() {
-  const lines = rawContent.value.split(/\r?\n/).filter(l => l.trim())
-  if (!lines.length) return
+  const raw = rawContent.value
+  if (!raw.trim()) return
 
-  // Auto-détecte séparateur
-  const first = lines[0]
-  const counts = { ';': (first.match(/;/g)||[]).length, ',': (first.match(/,/g)||[]).length, '\t': (first.match(/\t/g)||[]).length, '|': (first.match(/\|/g)||[]).length }
-  separator.value = Object.entries(counts).sort((a,b) => b[1]-a[1])[0][0]
+  // ── Étape 1 : parse le CSV en gérant les champs multi-lignes ────
+  // (ex: Crédit Agricole met les libellés sur 3 lignes dans des guillemets)
+  const records = []
+  let i = 0, currentFields = [], currentField = '', inQuote = false
 
-  const sep  = separator.value
-  const cols = splitLine(first, sep)
+  // Auto-détecte séparateur sur les 500 premiers caractères
+  const sample = raw.slice(0, 500)
+  const sepCounts = {
+    ';':  (sample.match(/;/g)  || []).length,
+    ',':  (sample.match(/,/g)  || []).length,
+    '\t': (sample.match(/\t/g) || []).length,
+    '|':  (sample.match(/\|/g) || []).length
+  }
+  const sep = Object.entries(sepCounts).sort((a,b) => b[1]-a[1])[0][0]
+  separator.value = sep
+
+  while (i < raw.length) {
+    const ch = raw[i]
+    if (ch === '"') {
+      if (inQuote && raw[i+1] === '"') { currentField += '"'; i += 2; continue }
+      inQuote = !inQuote; i++
+    } else if (ch === sep && !inQuote) {
+      currentFields.push(currentField.trim()); currentField = ''; i++
+    } else if ((ch === '\r' || ch === '\n') && !inQuote) {
+      if (ch === '\r' && raw[i+1] === '\n') i++
+      currentFields.push(currentField.trim()); currentField = ''
+      if (currentFields.some(f => f)) records.push(currentFields)
+      currentFields = []; i++
+    } else {
+      // Remplace les sauts de ligne DANS un champ guillemets par un espace
+      if ((ch === '\r' || ch === '\n') && inQuote) { currentField += ' '; i++; continue }
+      currentField += ch; i++
+    }
+  }
+  if (currentFields.some(f => f)) records.push([...currentFields, currentField].map(f => f.trim()))
+
+  if (!records.length) return
+
+  // ── Étape 2 : trouve la ligne d'en-tête ─────────────────────────
+  // C'est la ligne qui a le plus de colonnes (skip les métadonnées du haut)
+  let headerIdx = 0
+  let maxCols = 0
+  records.forEach((rec, idx) => {
+    if (rec.length > maxCols) { maxCols = rec.length; headerIdx = idx }
+  })
+
+  const cols = records[headerIdx].map(c => c.replace(/^"+|"+$/g, '').trim())
   headers.value = cols
 
-  rawRows.value = lines.slice(1).map(line => {
-    const vals = splitLine(line, sep)
-    const row = {}
-    cols.forEach((col, i) => { row[col] = (vals[i] || '').trim() })
-    return row
-  }).filter(r => Object.values(r).some(v => v))
+  // ── Étape 3 : convertit en objets ───────────────────────────────
+  rawRows.value = records.slice(headerIdx + 1)
+    .filter(rec => rec.length >= Math.max(2, maxCols - 2)) // tolère colonnes vides en fin
+    .map(rec => {
+      const row = {}
+      cols.forEach((col, j) => {
+        row[col] = (rec[j] || '').replace(/^"+|"+$/g, '').replace(/\s+/g, ' ').trim()
+      })
+      return row
+    })
+    .filter(r => Object.values(r).some(v => v))
 
   autoMap(cols)
 }
