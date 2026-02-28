@@ -109,6 +109,109 @@
       </div>
     </div>
 
+    <!-- ─── Prévision fin de mois (Premium) ──────────────────── -->
+    <div v-if="subStore.can('forecast')" class="card prevision-card" style="margin-bottom:24px">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px;flex-wrap:wrap;gap:8px">
+        <div>
+          <h3 style="font-family:var(--font-display)">📅 Prévision fin de mois</h3>
+          <p style="font-size:13px;color:var(--text-muted);margin-top:2px">
+            J{{ prevision.jourDuMois }} / {{ prevision.joursTotal }} — {{ prevision.joursRestants }} jours restants
+          </p>
+        </div>
+        <div class="prevision-badge" :class="prevision.tendance">
+          {{ prevision.tendance === 'bonne' ? '✅ Bonne trajectoire' : prevision.tendance === 'neutre' ? '⚠️ À surveiller' : '🔴 Budget dépassé' }}
+        </div>
+      </div>
+
+      <div class="prevision-grid">
+
+        <!-- Jauge progression du mois -->
+        <div class="prevision-jauge">
+          <div style="display:flex;justify-content:space-between;font-size:12px;color:var(--text-muted);margin-bottom:6px">
+            <span>Début du mois</span><span>{{ prevision.pctMois }}% écoulé</span><span>Fin du mois</span>
+          </div>
+          <div class="jauge-track">
+            <div class="jauge-fill" :style="{ width: prevision.pctMois + '%' }"></div>
+            <div class="jauge-cursor" :style="{ left: prevision.pctMois + '%' }"></div>
+          </div>
+        </div>
+
+        <!-- 3 métriques clés -->
+        <div class="prevision-metrics">
+          <div class="prevision-metric">
+            <div class="prev-metric-icon" style="background:rgba(255,107,107,0.1)">💸</div>
+            <div>
+              <div class="prev-metric-label">Dépenses projetées</div>
+              <div class="prev-metric-value" style="color:var(--red)">{{ formatAmount(prevision.depProjectees) }}</div>
+              <div class="prev-metric-sub">Actuelles : {{ formatAmount(prevision.depActuelles) }}</div>
+            </div>
+          </div>
+
+          <div class="prevision-metric">
+            <div class="prev-metric-icon" style="background:rgba(0,229,160,0.1)">💰</div>
+            <div>
+              <div class="prev-metric-label">Solde prévu</div>
+              <div class="prev-metric-value" :style="{ color: prevision.soldePrevu >= 0 ? 'var(--accent)' : 'var(--red)' }">
+                {{ formatAmount(prevision.soldePrevu) }}
+              </div>
+              <div class="prev-metric-sub">Revenus : {{ formatAmount(prevision.revProjectes) }}</div>
+            </div>
+          </div>
+
+          <div class="prevision-metric">
+            <div class="prev-metric-icon" style="background:rgba(79,172,254,0.1)">📆</div>
+            <div>
+              <div class="prev-metric-label">Budget / jour restant</div>
+              <div class="prev-metric-value" style="color:var(--blue)">{{ formatAmount(prevision.budgetPJ) }}</div>
+              <div class="prev-metric-sub">Rythme actuel : {{ formatAmount(prevision.rythmePJ) }}/j</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Barre dépenses projetées vs revenus -->
+        <div>
+          <div style="display:flex;justify-content:space-between;font-size:12px;color:var(--text-muted);margin-bottom:8px">
+            <span>Dépenses projetées vs revenus</span>
+            <span :style="{ color: prevision.depProjectees > prevision.revProjectes ? 'var(--red)' : 'var(--accent)' }">
+              {{ Math.round((prevision.depProjectees / (prevision.revProjectes || 1)) * 100) }}%
+            </span>
+          </div>
+          <div class="prev-bar-track">
+            <!-- Dépenses actuelles -->
+            <div class="prev-bar-fill actual"
+              :style="{ width: Math.min((prevision.depActuelles / (prevision.revProjectes || 1)) * 100, 100) + '%' }">
+            </div>
+            <!-- Projection en pointillés -->
+            <div class="prev-bar-fill projected"
+              :style="{
+                left: Math.min((prevision.depActuelles / (prevision.revProjectes || 1)) * 100, 100) + '%',
+                width: Math.min(((prevision.depProjectees - prevision.depActuelles) / (prevision.revProjectes || 1)) * 100, 100 - Math.min((prevision.depActuelles / (prevision.revProjectes || 1)) * 100, 100)) + '%'
+              }">
+            </div>
+            <!-- Marqueur danger (100%) -->
+            <div class="prev-bar-danger-line"></div>
+          </div>
+          <div style="display:flex;justify-content:space-between;font-size:11px;color:var(--text-muted);margin-top:4px">
+            <span>0€</span>
+            <span style="color:var(--accent)">Revenus : {{ formatAmount(prevision.revProjectes) }}</span>
+          </div>
+        </div>
+
+      </div>
+    </div>
+
+    <!-- Bannière upgrade si pas Premium -->
+    <div v-else class="card prevision-locked" style="margin-bottom:24px">
+      <span style="font-size:32px">📅</span>
+      <div>
+        <div style="font-weight:700;font-size:15px">Prévision fin de mois</div>
+        <div style="font-size:13px;color:var(--text-muted);margin-top:2px">
+          Anticipez votre solde de fin de mois et votre budget journalier restant
+        </div>
+      </div>
+      <router-link to="/pricing" class="btn btn-primary" style="flex-shrink:0">💎 Premium</router-link>
+    </div>
+
     <!-- Graphiques -->
     <div class="grid-2" style="margin-bottom:24px">
       <div class="card">
@@ -268,12 +371,14 @@ import { ref, computed, onMounted, onUnmounted, watch, nextTick } from 'vue'
 import { Chart, registerables } from 'chart.js'
 import { useAuthStore } from '@/stores/auth'
 import { useFinanceStore } from '@/stores/finance'
+import { useSubscriptionStore } from '@/stores/subscription'
 import { processRecurringTransactions } from '@/stores/recurring'
 
 Chart.register(...registerables)
 
 const authStore    = useAuthStore()
 const financeStore = useFinanceStore()
+const subStore     = useSubscriptionStore()
 const donutRef     = ref(null)
 const lineRef      = ref(null)
 const notifRecurrents = ref(0)
@@ -438,6 +543,56 @@ const objectifsAvecStats = computed(() =>
   financeStore.objectifs.map(o => ({ ...o, pct: o.montantCible > 0 ? Math.round((o.montantActuel / o.montantCible) * 100) : 0 }))
 )
 
+// ─── Prévision fin de mois ───────────────────────────────────────
+const prevision = computed(() => {
+  const today = new Date()
+  const jourDuMois   = today.getDate()
+  const joursTotal   = new Date(today.getFullYear(), today.getMonth() + 1, 0).getDate()
+  const joursRestants = joursTotal - jourDuMois
+
+  // Dépenses actuelles ce mois
+  const depActuelles = depensesCeMois.value
+
+  // Rythme journalier moyen
+  const rythmePJ = jourDuMois > 0 ? depActuelles / jourDuMois : 0
+
+  // Dépenses récurrentes pas encore passées ce mois
+  const recurrentsPasEncore = financeStore.depenses
+    .filter(d => {
+      if (!d.recurrent || !d.createdAt) return false
+      const dd = d.createdAt.toDate ? d.createdAt.toDate() : new Date(d.createdAt)
+      // Si la dernière occurrence était le mois dernier → pas encore passée ce mois
+      return dd.getMonth() !== today.getMonth() || dd.getFullYear() !== today.getFullYear()
+    })
+    .reduce((s, d) => s + d.montant, 0)
+
+  // Projection dépenses fin de mois
+  const depProjectees = depActuelles + (rythmePJ * joursRestants) + recurrentsPasEncore
+  
+  // Revenus attendus (on garde les revenus actuels comme base)
+  const revProjectes  = revenusCeMois.value
+
+  // Solde prévu
+  const soldePrevu    = revProjectes - depProjectees
+  
+  // % du mois écoulé
+  const pctMois       = Math.round((jourDuMois / joursTotal) * 100)
+
+  // Budget restant par jour
+  const budgetRestant = Math.max(0, revProjectes - depActuelles)
+  const budgetPJ      = joursRestants > 0 ? budgetRestant / joursRestants : 0
+
+  // Tendance : en avance ou en retard sur l'objectif d'épargne ?
+  const objectifEpargne = revProjectes * 0.20 // 20% d'épargne = objectif par défaut
+  const tendance = soldePrevu >= objectifEpargne ? 'bonne' : soldePrevu >= 0 ? 'neutre' : 'mauvaise'
+
+  return {
+    jourDuMois, joursTotal, joursRestants, pctMois,
+    depActuelles, depProjectees, rythmePJ,
+    revProjectes, soldePrevu, budgetPJ, tendance
+  }
+})
+
 const recentTransactions = computed(() => {
   const revs = financeStore.revenus.map(r => ({ ...r, type: 'revenu', emoji: typeEmoji(r.type), type_: r.type }))
   const deps = financeStore.depenses.map(d => ({ ...d, type: 'depense', emoji: catEmoji(d.categorie) }))
@@ -579,4 +734,36 @@ onUnmounted(() => {
 .solde-item.solde-final { padding-top:8px;border-top:1px solid var(--border);font-weight:700;color:var(--text-primary);font-size:15px }
 
 @media (max-width:768px) { .comparaison-grid { grid-template-columns:1fr } }
+
+/* ── Prévision ─────────────────────────────────────────────────── */
+.prevision-card { }
+.prevision-badge { padding:6px 14px;border-radius:99px;font-size:12px;font-weight:700 }
+.prevision-badge.bonne   { background:rgba(0,229,160,0.12);color:var(--green) }
+.prevision-badge.neutre  { background:rgba(255,159,67,0.12);color:var(--orange) }
+.prevision-badge.mauvaise{ background:rgba(255,107,107,0.12);color:var(--red) }
+
+.prevision-grid { display:flex;flex-direction:column;gap:20px }
+
+.jauge-track { position:relative;height:10px;background:var(--bg-elevated);border-radius:99px;overflow:visible }
+.jauge-fill  { height:100%;background:linear-gradient(90deg,var(--accent),var(--blue));border-radius:99px;transition:width 1s ease }
+.jauge-cursor { position:absolute;top:-4px;width:18px;height:18px;background:white;border:3px solid var(--accent);border-radius:50%;transform:translateX(-50%);transition:left 1s ease;box-shadow:0 2px 8px rgba(0,229,160,0.4) }
+
+.prevision-metrics { display:grid;grid-template-columns:repeat(3,1fr);gap:16px }
+.prevision-metric  { display:flex;align-items:flex-start;gap:12px;padding:14px;background:var(--bg-elevated);border-radius:var(--radius) }
+.prev-metric-icon  { width:36px;height:36px;border-radius:9px;display:flex;align-items:center;justify-content:center;font-size:16px;flex-shrink:0 }
+.prev-metric-label { font-size:11px;color:var(--text-muted);font-weight:500;text-transform:uppercase;letter-spacing:0.04em;margin-bottom:4px }
+.prev-metric-value { font-family:var(--font-display);font-size:1.3rem;font-weight:800;line-height:1 }
+.prev-metric-sub   { font-size:11px;color:var(--text-muted);margin-top:3px }
+
+.prev-bar-track { position:relative;height:12px;background:var(--bg-elevated);border-radius:99px;overflow:hidden }
+.prev-bar-fill.actual    { position:absolute;top:0;left:0;height:100%;background:var(--red);border-radius:99px;transition:width 0.8s ease }
+.prev-bar-fill.projected { position:absolute;top:0;height:100%;background:repeating-linear-gradient(90deg,rgba(255,107,107,0.4) 0,rgba(255,107,107,0.4) 6px,transparent 6px,transparent 12px);border-radius:0 99px 99px 0;transition:all 0.8s ease }
+.prev-bar-danger-line    { position:absolute;right:0;top:-2px;bottom:-2px;width:2px;background:var(--red);opacity:0.4 }
+
+.prevision-locked { display:flex;align-items:center;gap:16px;padding:20px;flex-wrap:wrap }
+
+@media (max-width:768px) {
+  .prevision-metrics { grid-template-columns:1fr }
+  .prevision-locked  { flex-direction:column;text-align:center }
+}
 </style>
