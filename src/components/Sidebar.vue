@@ -188,6 +188,19 @@
             </router-link>
           </div>
 
+          <div class="drawer-section">
+            <span class="drawer-label">Outils</span>
+            <router-link
+              v-for="item in toolsNav" :key="item.name"
+              :to="item.path" class="drawer-item"
+              :class="{ active: $route.path === item.path }"
+              @click="drawerOpen = false"
+            >
+              <span class="nav-icon" v-html="item.icon"></span>
+              <span>{{ item.label }}</span>
+            </router-link>
+          </div>
+
           <!-- Footer drawer -->
           <div class="drawer-footer">
             <router-link to="/profil" class="drawer-user" v-if="authStore.user" @click="drawerOpen = false" style="text-decoration:none;color:inherit">
@@ -323,6 +336,14 @@ const analysisNav = [
 ]
 
 const toolsNav = [
+  {
+    name: 'comptes', path: '/comptes', label: 'Mes comptes',
+    icon: `<svg width="18" height="18" viewBox="0 0 24 24" fill="none">
+      <rect x="2" y="5" width="20" height="14" rx="2" stroke="currentColor" stroke-width="2"/>
+      <path d="M2 10h20" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+    </svg>`,
+    pro: true
+  },
   {
     name: 'import', path: '/import', label: 'Import bancaire',
     icon: `<svg width="18" height="18" viewBox="0 0 24 24" fill="none">
