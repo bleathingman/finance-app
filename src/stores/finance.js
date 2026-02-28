@@ -10,10 +10,19 @@ import { useSubscriptionStore } from './subscription'
 
 export const useFinanceStore = defineStore('finance', () => {
   const authStore = useAuthStore()
-  // Lazy-load pour éviter les dépendances circulaires
+
   function getSubStore() {
     try { return useSubscriptionStore() } catch { return null }
   }
+
+  // Lazy-load pour éviter les dépendances circulaires
+  function getComptesStore() {
+    try {
+      const { useComptesStore } = require('./comptes')
+      return useComptesStore()
+    } catch { return null }
+  }
+
   const revenus   = ref([])
   const depenses  = ref([])
   const budgets   = ref([])
@@ -21,11 +30,17 @@ export const useFinanceStore = defineStore('finance', () => {
   const loading   = ref(false)
 
   // ─── Helpers ──────────────────────────────────────────────────────
-  // Convertit une date string "YYYY-MM-DD" en Timestamp Firestore
   function dateToTimestamp(dateStr) {
     if (!dateStr) return Timestamp.now()
     const [y, m, d] = dateStr.split('-').map(Number)
     return Timestamp.fromDate(new Date(y, m - 1, d, 12, 0, 0))
+  }
+
+  // Retourne le compteId à utiliser : celui fourni, ou le compte par défaut
+  function resolveCompteId(compteIdFourni) {
+    if (compteIdFourni) return compteIdFourni
+    const comptes = getComptesStore()
+    return comptes?.compteDefautId ?? null
   }
 
   // ─── Filtre mois courant ──────────────────────────────────────────
@@ -36,7 +51,6 @@ export const useFinanceStore = defineStore('finance', () => {
     return d.getMonth() === now.getMonth() && d.getFullYear() === now.getFullYear()
   }
 
-  // Filtre selon la limite d'historique du plan
   function estDansLimite(tx) {
     if (!tx.createdAt) return false
     const sub = getSubStore()
@@ -82,7 +96,9 @@ export const useFinanceStore = defineStore('finance', () => {
         recurrent:   data.recurrent || false,
         date:        data.date,
         uid,
-        createdAt:   dateToTimestamp(data.date) // ← date choisie par l'utilisateur
+        // Toujours stocker un compteId : celui fourni ou le compte par défaut
+        compteId:    resolveCompteId(data.compteId),
+        createdAt:   dateToTimestamp(data.date)
       })
     } catch (e) { console.error('Erreur ajout revenu:', e); throw e }
   }
@@ -95,6 +111,7 @@ export const useFinanceStore = defineStore('finance', () => {
         montant:     data.montant,
         recurrent:   data.recurrent || false,
         date:        data.date,
+        compteId:    resolveCompteId(data.compteId),
         createdAt:   dateToTimestamp(data.date)
       })
     } catch (e) { console.error('Erreur modification revenu:', e); throw e }
@@ -128,7 +145,9 @@ export const useFinanceStore = defineStore('finance', () => {
         recurrent:   data.recurrent || false,
         date:        data.date,
         uid,
-        createdAt:   dateToTimestamp(data.date) // ← date choisie
+        // Toujours stocker un compteId : celui fourni ou le compte par défaut
+        compteId:    resolveCompteId(data.compteId),
+        createdAt:   dateToTimestamp(data.date)
       })
     } catch (e) { console.error('Erreur ajout dépense:', e); throw e }
   }
@@ -141,6 +160,7 @@ export const useFinanceStore = defineStore('finance', () => {
         montant:     data.montant,
         recurrent:   data.recurrent || false,
         date:        data.date,
+        compteId:    resolveCompteId(data.compteId),
         createdAt:   dateToTimestamp(data.date)
       })
     } catch (e) { console.error('Erreur modification dépense:', e); throw e }
@@ -210,7 +230,8 @@ export const useFinanceStore = defineStore('finance', () => {
 
   return {
     revenus, depenses, budgets, objectifs, loading,
-    totalRevenus, totalDepenses, solde, depensesParCategorie, revenusDuMois, depensesDuMois, revenusHistorique, depensesHistorique,
+    totalRevenus, totalDepenses, solde, depensesParCategorie,
+    revenusDuMois, depensesDuMois, revenusHistorique, depensesHistorique,
     ajouterRevenu, modifierRevenu, supprimerRevenu, ecouter_revenus,
     ajouterDepense, modifierDepense, supprimerDepense, ecouter_depenses,
     definirBudget, ecouter_budgets,

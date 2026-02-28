@@ -98,7 +98,6 @@
         <div v-for="item in comparaisonItems" :key="item.label" class="comparaison-item">
           <div class="comp-label">{{ item.emoji }} {{ item.label }}</div>
           <div class="comp-bars">
-            <!-- Mois précédent -->
             <div class="comp-bar-row">
               <span class="comp-bar-month">{{ labelMoisPrec }}</span>
               <div class="comp-bar-track">
@@ -106,7 +105,6 @@
               </div>
               <span class="comp-bar-val">{{ formatAmount(item.valPrec) }}</span>
             </div>
-            <!-- Mois courant -->
             <div class="comp-bar-row">
               <span class="comp-bar-month">Ce mois</span>
               <div class="comp-bar-track">
@@ -137,8 +135,6 @@
       </div>
 
       <div class="prevision-grid">
-
-        <!-- Jauge progression du mois -->
         <div class="prevision-jauge">
           <div style="display:flex;justify-content:space-between;font-size:12px;color:var(--text-muted);margin-bottom:6px">
             <span>Début du mois</span><span>{{ prevision.pctMois }}% écoulé</span><span>Fin du mois</span>
@@ -149,7 +145,6 @@
           </div>
         </div>
 
-        <!-- 3 métriques clés -->
         <div class="prevision-metrics">
           <div class="prevision-metric">
             <div class="prev-metric-icon" style="background:rgba(255,107,107,0.1)">💸</div>
@@ -159,7 +154,6 @@
               <div class="prev-metric-sub">Actuelles : {{ formatAmount(prevision.depActuelles) }}</div>
             </div>
           </div>
-
           <div class="prevision-metric">
             <div class="prev-metric-icon" style="background:rgba(0,229,160,0.1)">💰</div>
             <div>
@@ -170,7 +164,6 @@
               <div class="prev-metric-sub">Revenus : {{ formatAmount(prevision.revProjectes) }}</div>
             </div>
           </div>
-
           <div class="prevision-metric">
             <div class="prev-metric-icon" style="background:rgba(79,172,254,0.1)">📆</div>
             <div>
@@ -181,7 +174,6 @@
           </div>
         </div>
 
-        <!-- Barre dépenses projetées vs revenus -->
         <div>
           <div style="display:flex;justify-content:space-between;font-size:12px;color:var(--text-muted);margin-bottom:8px">
             <span>Dépenses projetées vs revenus</span>
@@ -190,18 +182,15 @@
             </span>
           </div>
           <div class="prev-bar-track">
-            <!-- Dépenses actuelles -->
             <div class="prev-bar-fill actual"
               :style="{ width: Math.min((prevision.depActuelles / (prevision.revProjectes || 1)) * 100, 100) + '%' }">
             </div>
-            <!-- Projection en pointillés -->
             <div class="prev-bar-fill projected"
               :style="{
                 left: Math.min((prevision.depActuelles / (prevision.revProjectes || 1)) * 100, 100) + '%',
                 width: Math.min(((prevision.depProjectees - prevision.depActuelles) / (prevision.revProjectes || 1)) * 100, 100 - Math.min((prevision.depActuelles / (prevision.revProjectes || 1)) * 100, 100)) + '%'
               }">
             </div>
-            <!-- Marqueur danger (100%) -->
             <div class="prev-bar-danger-line"></div>
           </div>
           <div style="display:flex;justify-content:space-between;font-size:11px;color:var(--text-muted);margin-top:4px">
@@ -209,7 +198,6 @@
             <span style="color:var(--accent)">Revenus : {{ formatAmount(prevision.revProjectes) }}</span>
           </div>
         </div>
-
       </div>
     </div>
 
@@ -480,11 +468,11 @@ const deltaDepenses = computed(() => depensesCeMois.value - depensesMoisPrec.val
 const deltaTaux     = computed(() => tauxEpargne.value - tauxEpargneMoisPrec.value)
 
 // ─── Solde réel du compte actif ──────────────────────────────────
-// On lit directement le champ `solde` du compte depuis le store,
-// au lieu de recalculer revenus - dépenses (qui ignore l'historique).
+// Lit le solde calculé dynamiquement dans comptesStore.
+// Les transactions sans compteId (users free existants) sont automatiquement
+// rattachées au compte par défaut via calculerSolde().
 const soldeReel = computed(() => {
   const compte = comptesStore.tousLesComptes?.find(c => c.id === comptesStore.compteActifId)
-  // Fallback sur le net du mois si le compte n'a pas encore de champ solde
   return compte?.solde ?? soldeCeMois.value
 })
 
@@ -575,10 +563,8 @@ const prevision = computed(() => {
   const jourDuMois   = today.getDate()
   const joursTotal   = new Date(today.getFullYear(), today.getMonth() + 1, 0).getDate()
   const joursRestants = joursTotal - jourDuMois
-
   const depActuelles = depensesCeMois.value
   const rythmePJ = jourDuMois > 0 ? depActuelles / jourDuMois : 0
-
   const recurrentsPasEncore = financeStore.depenses
     .filter(d => {
       if (!d.recurrent || !d.createdAt) return false
@@ -586,7 +572,6 @@ const prevision = computed(() => {
       return dd.getMonth() !== today.getMonth() || dd.getFullYear() !== today.getFullYear()
     })
     .reduce((s, d) => s + d.montant, 0)
-
   const depProjectees = depActuelles + (rythmePJ * joursRestants) + recurrentsPasEncore
   const revProjectes  = revenusCeMois.value
   const soldePrevu    = revProjectes - depProjectees
@@ -595,12 +580,7 @@ const prevision = computed(() => {
   const budgetPJ      = joursRestants > 0 ? budgetRestant / joursRestants : 0
   const objectifEpargne = revProjectes * 0.20
   const tendance = soldePrevu >= objectifEpargne ? 'bonne' : soldePrevu >= 0 ? 'neutre' : 'mauvaise'
-
-  return {
-    jourDuMois, joursTotal, joursRestants, pctMois,
-    depActuelles, depProjectees, rythmePJ,
-    revProjectes, soldePrevu, budgetPJ, tendance
-  }
+  return { jourDuMois, joursTotal, joursRestants, pctMois, depActuelles, depProjectees, rythmePJ, revProjectes, soldePrevu, budgetPJ, tendance }
 })
 
 const recentTransactions = computed(() => {
@@ -660,6 +640,13 @@ onMounted(async () => {
   unsubs.push(financeStore.ecouter_budgets())
   unsubs.push(financeStore.ecouter_objectifs())
   unsubs.push(comptesStore.ecouter_comptes())
+
+  // Crée un compte courant par défaut si l'user n'en a aucun.
+  // S'exécute pour TOUS les users (free et pro).
+  // Garantit que les transactions futures ont toujours un compteId,
+  // et que les anciennes (sans compteId) sont rattachées à ce compte via calculerSolde().
+  await comptesStore.initialiserCompteDefaut()
+
   const stopWatch = watch(
     () => comptesStore.comptes,
     (comptes) => {
@@ -766,7 +753,6 @@ onUnmounted(() => {
 
 @media (max-width:768px) { .comparaison-grid { grid-template-columns:1fr } }
 
-/* ── Prévision ─────────────────────────────────────────────────── */
 .prevision-card { }
 .prevision-badge { padding:6px 14px;border-radius:99px;font-size:12px;font-weight:700 }
 .prevision-badge.bonne   { background:rgba(0,229,160,0.12);color:var(--green) }
