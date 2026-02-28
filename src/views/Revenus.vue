@@ -216,6 +216,15 @@
                 <label>Date</label>
                 <input v-model="form.date" type="date" class="input" lang="fr" required />
               </div>
+              <div v-if="subStore.can('multiAccounts') && comptesStore.comptes.length > 0" class="form-group">
+                <label>Compte bancaire (optionnel)</label>
+                <select class="input" v-model="form.compteId">
+                  <option :value="null">— Aucun compte spécifique —</option>
+                  <option v-for="compte in comptesStore.comptes" :key="compte.id" :value="compte.id">
+                    {{ compte.nom }}
+                  </option>
+                </select>
+              </div>
               <div class="toggle-row">
                 <div>
                   <div style="font-weight:500;font-size:14px">Revenu récurrent</div>
@@ -247,9 +256,13 @@
 <script setup>
 import { ref, computed, onMounted, onUnmounted } from 'vue'
 import { useFinanceStore } from '@/stores/finance'
+import { useComptesStore } from '@/stores/comptes'
+import { useSubscriptionStore } from '@/stores/subscription'
 import { useSubscriptionStore } from '@/stores/subscription'
 
 const financeStore = useFinanceStore()
+const comptesStore = useComptesStore()
+const subStore     = useSubscriptionStore()
 const subStore     = useSubscriptionStore()
 const showModal    = ref(false)
 const editMode     = ref(false)
@@ -269,7 +282,7 @@ const types = [
 
 const defaultForm = () => ({
   type: 'Salaire', description: '', montant: null,
-  date: new Date().toISOString().split('T')[0], recurrent: false
+  date: new Date().toISOString().split('T')[0], recurrent: false, compteId: null
 })
 const form = ref(defaultForm())
 
@@ -408,7 +421,9 @@ async function handleSauvegarder() {
     if (editMode.value && editId.value) {
       await financeStore.modifierRevenu(editId.value, { ...form.value })
     } else {
-      await financeStore.ajouterRevenu({ ...form.value })
+      await financeStore.ajouterRevenu({ ...form.value ,
+        compteId: form.value.compteId || null
+      })
     }
     closeModal()
   } finally { submitting.value = false }

@@ -234,6 +234,15 @@
               <div class="form-group">
                 <label>Date</label>
                 <input v-model="form.date" type="date" class="input" lang="fr" required />
+              <div v-if="subStore.can('multiAccounts') && comptesStore.comptes.length > 0" class="form-group">
+                <label>Compte bancaire (optionnel)</label>
+                <select class="input" v-model="form.compteId">
+                  <option :value="null">— Aucun compte spécifique —</option>
+                  <option v-for="compte in comptesStore.comptes" :key="compte.id" :value="compte.id">
+                    {{ compte.nom }}
+                  </option>
+                </select>
+              </div>
               </div>
               <div class="toggle-row">
                 <div>
@@ -266,9 +275,13 @@
 <script setup>
 import { ref, computed, onMounted, onUnmounted } from 'vue'
 import { useFinanceStore } from '@/stores/finance'
+import { useComptesStore } from '@/stores/comptes'
+import { useSubscriptionStore } from '@/stores/subscription'
 import { useSubscriptionStore } from '@/stores/subscription'
 
 const financeStore = useFinanceStore()
+const comptesStore = useComptesStore()
+const subStore     = useSubscriptionStore()
 const subStore     = useSubscriptionStore()
 
 const showModal    = ref(false)
@@ -294,7 +307,8 @@ const categories = [
 
 const defaultForm = () => ({
   categorie: 'Nourriture', description: '', montant: null,
-  date: new Date().toISOString().split('T')[0], recurrent: false
+  date: new Date().toISOString().split('T')[0], recurrent: false,
+  compteId: null
 })
 const form      = ref(defaultForm())
 const quickForm = ref({ categorie: '', description: '', montant: null })
@@ -430,7 +444,9 @@ async function handleSauvegarder() {
     if (editMode.value && editId.value) {
       await financeStore.modifierDepense(editId.value, { ...form.value })
     } else {
-      await financeStore.ajouterDepense({ ...form.value })
+      await financeStore.ajouterDepense({ ...form.value ,
+        compteId: form.value.compteId || null
+      })
     }
     closeModal()
   } finally { submitting.value = false }
