@@ -16,7 +16,20 @@
         <h1>Bonjour, {{ userName }} 👋</h1>
         <p>{{ moisCourant }} — voici votre situation financière</p>
       </div>
-      <div class="header-date">{{ dateAujourdhui }}</div>
+      <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
+        <!-- Sélecteur de compte (Pro) -->
+        <div v-if="subStore.can('multiAccounts') && comptesStore.comptes.length > 0" class="compte-selector">
+          <button
+            v-for="c in comptesStore.tousLesComptes" :key="String(c.id)"
+            class="compte-chip"
+            :class="{ active: comptesStore.compteActifId === c.id }"
+            :style="comptesStore.compteActifId === c.id && c.couleur ? { background: c.couleur + '22', borderColor: c.couleur, color: c.couleur } : {}"
+            @click="comptesStore.setCompteActif(c.id)">
+            {{ c.emoji || c.nom[0] }} {{ c.nom }}
+          </button>
+        </div>
+        <div class="header-date">{{ dateAujourdhui }}</div>
+      </div>
     </div>
 
     <!-- KPI Cards avec comparaison mois précédent -->
@@ -372,6 +385,7 @@ import { Chart, registerables } from 'chart.js'
 import { useAuthStore } from '@/stores/auth'
 import { useFinanceStore } from '@/stores/finance'
 import { useSubscriptionStore } from '@/stores/subscription'
+import { useComptesStore } from '@/stores/comptes'
 import { processRecurringTransactions } from '@/stores/recurring'
 
 Chart.register(...registerables)
@@ -379,6 +393,7 @@ Chart.register(...registerables)
 const authStore    = useAuthStore()
 const financeStore = useFinanceStore()
 const subStore     = useSubscriptionStore()
+const comptesStore = useComptesStore()
 const donutRef     = ref(null)
 const lineRef      = ref(null)
 const notifRecurrents = ref(0)
@@ -435,12 +450,16 @@ function pctChange(curr, prev) {
   return Math.abs(Math.round(((curr - prev) / prev) * 100))
 }
 
-// ─── Filtrage par mois ────────────────────────────────────────────
+// ─── Filtrage par mois + compte actif ────────────────────────────
 function txDuMois(liste, annee, mois) {
+  const compteId = comptesStore.compteActifId
   return liste.filter(tx => {
     if (!tx.createdAt) return false
     const d = tx.createdAt.toDate ? tx.createdAt.toDate() : new Date(tx.createdAt)
-    return d.getFullYear() === annee && d.getMonth() === mois
+    if (d.getFullYear() !== annee || d.getMonth() !== mois) return false
+    // Si un compte est sélectionné, filtre par compteId
+    if (compteId !== null) return (tx.compteId || null) === compteId
+    return true
   })
 }
 
@@ -649,6 +668,19 @@ onMounted(async () => {
   unsubs.push(financeStore.ecouter_depenses())
   unsubs.push(financeStore.ecouter_budgets())
   unsubs.push(financeStore.ecouter_objectifs())
+  // Écoute les comptes + auto-sélection compte courant
+  unsubs.push(comptesStore.ecouter_comptes())
+  const stopWatch = watch(
+    () => comptesStore.comptes,
+    (comptes) => {
+      if (comptes.length > 0 && comptesStore.compteActifId === null) {
+        const courant = comptes.find(c => c.type === 'courant') || comptes[0]
+        comptesStore.setCompteActif(courant.id)
+        stopWatch()
+      }
+    },
+    { immediate: true }
+  )
 
   // Attendre que les données soient chargées puis traiter les récurrents
   setTimeout(async () => {
@@ -670,6 +702,16 @@ onUnmounted(() => {
 
 <style scoped>
 .header-date { font-size:13px;color:var(--text-muted);background:var(--bg-surface);border:1px solid var(--border);border-radius:var(--radius);padding:8px 14px;text-transform:capitalize }
+
+.compte-selector { display:flex;gap:6px;flex-wrap:wrap }
+.compte-chip {
+  padding:6px 14px;border-radius:99px;border:1px solid var(--border);
+  background:var(--bg-elevated);cursor:pointer;font-size:12px;font-weight:600;
+  font-family:var(--font-body);color:var(--text-secondary);
+  transition:all var(--transition);white-space:nowrap;
+}
+.compte-chip:hover { border-color:var(--border-accent);color:var(--text-primary) }
+.compte-chip.active { font-weight:700 }
 
 .notif-banner { display:flex;align-items:center;gap:10px;padding:12px 18px;margin-bottom:20px;background:rgba(79,172,254,0.1);border:1px solid rgba(79,172,254,0.25);border-radius:var(--radius);font-size:14px }
 .notif-close  { margin-left:auto;background:none;border:none;cursor:pointer;color:var(--text-muted);font-size:14px }
