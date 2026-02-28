@@ -14,8 +14,9 @@
     </div>
 
     <nav class="sidebar-nav">
+      <!-- Finances -->
       <div class="nav-section">
-        <span class="nav-label">Principal</span>
+        <span class="nav-label">Finances</span>
         <router-link
           v-for="item in mainNav" :key="item.name"
           :to="item.path" class="nav-item"
@@ -28,10 +29,25 @@
         </router-link>
       </div>
 
+      <!-- Analyse -->
       <div class="nav-section">
         <span class="nav-label">Analyse</span>
         <router-link
           v-for="item in analysisNav" :key="item.name"
+          :to="item.path" class="nav-item"
+          :class="{ active: $route.path === item.path }"
+          :title="isCollapsed ? item.label : ''"
+        >
+          <span class="nav-icon" v-html="item.icon"></span>
+          <span class="nav-text">{{ item.label }}</span>
+        </router-link>
+      </div>
+
+      <!-- Outils -->
+      <div class="nav-section">
+        <span class="nav-label">Outils</span>
+        <router-link
+          v-for="item in toolsNav" :key="item.name"
           :to="item.path" class="nav-item"
           :class="{ active: $route.path === item.path }"
           :title="isCollapsed ? item.label : ''"
@@ -57,7 +73,7 @@
         <span class="nav-text">{{ isDark ? 'Mode clair' : 'Mode sombre' }}</span>
       </button>
 
-      <div class="user-card" v-if="authStore.user">
+      <router-link to="/profil" class="user-card" v-if="authStore.user">
         <div class="user-avatar">
           <img v-if="authStore.user.photoURL" :src="authStore.user.photoURL" alt="avatar" />
           <span v-else>{{ userInitial }}</span>
@@ -66,13 +82,13 @@
           <span class="user-name">{{ userName }}</span>
           <span class="user-email">{{ authStore.user.email }}</span>
         </div>
-        <button class="logout-btn" @click="handleLogout" title="Déconnexion">
+        <button class="logout-btn" @click.prevent="handleLogout" title="Déconnexion">
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
             <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4M16 17l5-5-5-5M21 12H9"
               stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
           </svg>
         </button>
-      </div>
+      </router-link>
     </div>
 
     <button class="collapse-btn" @click="isCollapsed = !isCollapsed">
@@ -174,7 +190,7 @@
 
           <!-- Footer drawer -->
           <div class="drawer-footer">
-            <div class="drawer-user" v-if="authStore.user">
+            <router-link to="/profil" class="drawer-user" v-if="authStore.user" @click="drawerOpen = false" style="text-decoration:none;color:inherit">
               <div class="user-avatar" style="width:38px;height:38px;font-size:16px">
                 <img v-if="authStore.user.photoURL" :src="authStore.user.photoURL" alt="avatar" />
                 <span v-else>{{ userInitial }}</span>
@@ -183,7 +199,8 @@
                 <span class="user-name">{{ userName }}</span>
                 <span class="user-email">{{ authStore.user.email }}</span>
               </div>
-            </div>
+              <span style="font-size:12px;color:var(--text-muted)">→</span>
+            </router-link>
             <!-- Badge plan mobile -->
             <router-link to="/pricing" class="drawer-plan-badge" @click="drawerOpen = false">
               <span>{{ subStore.isPaid ? (subStore.isPro ? '🚀' : '💎') : '🌱' }}</span>
@@ -238,7 +255,7 @@ const userName    = computed(() => {
 const userInitial = computed(() => userName.value.charAt(0).toUpperCase())
 
 const currentPageLabel = computed(() => {
-  const all = [...mainNav, ...analysisNav]
+  const all = [...mainNav, ...analysisNav, ...toolsNav]
   return all.find(n => n.path === route.path)?.label || 'FinanceFlow'
 })
 
@@ -283,10 +300,29 @@ const mainNav = [
       <path d="M22 12h-4l-3 9L9 3l-3 9H2" stroke="currentColor" stroke-width="2"
         stroke-linecap="round" stroke-linejoin="round"/>
     </svg>`
+  },
+  {
+    name: 'objectifs', path: '/objectifs', label: 'Objectifs',
+    icon: `<svg width="18" height="18" viewBox="0 0 24 24" fill="none">
+      <circle cx="12" cy="12" r="10" stroke="currentColor" stroke-width="2"/>
+      <circle cx="12" cy="12" r="6" stroke="currentColor" stroke-width="2"/>
+      <circle cx="12" cy="12" r="2" fill="currentColor"/>
+    </svg>`
   }
 ]
 
 const analysisNav = [
+  {
+    name: 'statistiques', path: '/statistiques', label: 'Statistiques',
+    icon: `<svg width="18" height="18" viewBox="0 0 24 24" fill="none">
+      <line x1="18" y1="20" x2="18" y2="10" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+      <line x1="12" y1="20" x2="12" y2="4"  stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+      <line x1="6"  y1="20" x2="6"  y2="14" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+    </svg>`
+  }
+]
+
+const toolsNav = [
   {
     name: 'import', path: '/import', label: 'Import bancaire',
     icon: `<svg width="18" height="18" viewBox="0 0 24 24" fill="none">
@@ -302,19 +338,10 @@ const analysisNav = [
     </svg>`
   },
   {
-    name: 'objectifs', path: '/objectifs', label: 'Objectifs',
+    name: 'pricing', path: '/pricing', label: 'Abonnement',
     icon: `<svg width="18" height="18" viewBox="0 0 24 24" fill="none">
-      <circle cx="12" cy="12" r="10" stroke="currentColor" stroke-width="2"/>
-      <circle cx="12" cy="12" r="6" stroke="currentColor" stroke-width="2"/>
-      <circle cx="12" cy="12" r="2" fill="currentColor"/>
-    </svg>`
-  },
-  {
-    name: 'statistiques', path: '/statistiques', label: 'Statistiques',
-    icon: `<svg width="18" height="18" viewBox="0 0 24 24" fill="none">
-      <line x1="18" y1="20" x2="18" y2="10" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
-      <line x1="12" y1="20" x2="12" y2="4"  stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
-      <line x1="6"  y1="20" x2="6"  y2="14" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+      <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"
+        stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
     </svg>`
   }
 ]
@@ -406,7 +433,7 @@ const sunIcon = `<svg width="18" height="18" viewBox="0 0 24 24" fill="none">
 .theme-toggle { display: flex; align-items: center; gap: 12px; padding: 10px 12px; border-radius: var(--radius); background: none; border: none; cursor: pointer; color: var(--text-muted); font-family: var(--font-body); font-size: 14px; font-weight: 500; width: 100%; white-space: nowrap; overflow: hidden; transition: all var(--transition); }
 .theme-toggle:hover { background: var(--bg-elevated); color: var(--text-primary); }
 
-.user-card { display: flex; align-items: center; gap: 10px; padding: 10px 12px; border-radius: var(--radius); background: var(--bg-elevated); overflow: hidden; }
+.user-card { text-decoration:none; color:inherit; display: flex; align-items: center; gap: 10px; padding: 10px 12px; border-radius: var(--radius); background: var(--bg-elevated); overflow: hidden; }
 .user-avatar { width: 32px; height: 32px; border-radius: 50%; background: var(--accent-dim); border: 1px solid var(--border-accent); display: flex; align-items: center; justify-content: center; font-size: 14px; font-weight: 700; color: var(--accent); flex-shrink: 0; overflow: hidden; }
 .user-avatar img { width: 100%; height: 100%; object-fit: cover; }
 .user-info  { flex: 1; min-width: 0; transition: opacity var(--transition); }

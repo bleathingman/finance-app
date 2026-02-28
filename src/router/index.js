@@ -11,12 +11,14 @@ import Login        from '@/views/Login.vue'
 import Pricing      from '@/views/Pricing.vue'
 import Themes       from '@/views/Themes.vue'
 import ImportCSV    from '@/views/ImportCSV.vue'
+import Profil       from '@/views/Profil.vue'
 
 const routes = [
   { path: '/login',        name: 'Login',        component: Login,        meta: { public: true } },
   { path: '/pricing',      name: 'Pricing',      component: Pricing,      meta: { requiresAuth: true } },
   { path: '/themes',       name: 'Themes',       component: Themes,       meta: { requiresAuth: true } },
   { path: '/import',       name: 'ImportCSV',    component: ImportCSV,    meta: { requiresAuth: true } },
+  { path: '/profil',       name: 'Profil',       component: Profil,       meta: { requiresAuth: true } },
   { path: '/',             name: 'Dashboard',    component: Dashboard,    meta: { requiresAuth: true } },
   { path: '/revenus',      name: 'Revenus',      component: Revenus,      meta: { requiresAuth: true } },
   { path: '/depenses',     name: 'Depenses',     component: Depenses,     meta: { requiresAuth: true } },
