@@ -258,11 +258,9 @@ import { ref, computed, onMounted, onUnmounted } from 'vue'
 import { useFinanceStore } from '@/stores/finance'
 import { useComptesStore } from '@/stores/comptes'
 import { useSubscriptionStore } from '@/stores/subscription'
-import { useSubscriptionStore } from '@/stores/subscription'
 
 const financeStore = useFinanceStore()
 const comptesStore = useComptesStore()
-const subStore     = useSubscriptionStore()
 const subStore     = useSubscriptionStore()
 const showModal    = ref(false)
 const editMode     = ref(false)
