@@ -39,12 +39,12 @@
         <div class="kpi-icon" style="background:rgba(0,229,160,0.15);color:var(--accent)">
           <svg width="18" height="18" viewBox="0 0 24 24" fill="none"><path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
         </div>
-        <div class="kpi-label">Solde du mois</div>
-        <div class="kpi-value" :style="{ color: soldeCeMois >= 0 ? 'var(--accent)' : 'var(--red)' }">
-          {{ formatAmount(soldeCeMois) }}
+        <div class="kpi-label">Solde du compte</div>
+        <div class="kpi-value" :style="{ color: soldeReel >= 0 ? 'var(--accent)' : 'var(--red)' }">
+          {{ formatAmount(soldeReel) }}
         </div>
-        <div class="kpi-compare" :class="deltaSolde >= 0 ? 'up' : 'down'">
-          {{ deltaSolde >= 0 ? '▲' : '▼' }} {{ formatAmount(Math.abs(deltaSolde)) }} vs mois dernier
+        <div class="kpi-compare" :class="soldeCeMois >= 0 ? 'up' : 'down'">
+          {{ soldeCeMois >= 0 ? '▲' : '▼' }} {{ formatAmount(Math.abs(soldeCeMois)) }} ce mois
         </div>
       </div>
 
@@ -122,7 +122,7 @@
       </div>
     </div>
 
-    <!-- ─── Prévision fin de mois (Premium) ──────────────────── -->
+    <!-- ─── Prévision fin de mois (Premium) ──────────────────────────── -->
     <div v-if="subStore.can('forecast')" class="card prevision-card" style="margin-bottom:24px">
       <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px;flex-wrap:wrap;gap:8px">
         <div>
@@ -368,9 +368,9 @@
           <span class="amount-negative">-{{ formatAmount(depensesCeMois) }}</span>
         </div>
         <div class="solde-item solde-final">
-          <span>Solde net</span>
-          <span :class="soldeCeMois >= 0 ? 'amount-positive' : 'amount-negative'">
-            {{ soldeCeMois >= 0 ? '+' : '' }}{{ formatAmount(soldeCeMois) }}
+          <span>Solde du compte</span>
+          <span :class="soldeReel >= 0 ? 'amount-positive' : 'amount-negative'">
+            {{ soldeReel >= 0 ? '+' : '' }}{{ formatAmount(soldeReel) }}
           </span>
         </div>
       </div>
@@ -457,7 +457,6 @@ function txDuMois(liste, annee, mois) {
     if (!tx.createdAt) return false
     const d = tx.createdAt.toDate ? tx.createdAt.toDate() : new Date(tx.createdAt)
     if (d.getFullYear() !== annee || d.getMonth() !== mois) return false
-    // Si un compte est sélectionné, filtre par compteId
     if (compteId !== null) return (tx.compteId || null) === compteId
     return true
   })
@@ -478,8 +477,16 @@ const tauxEpargneMoisPrec = computed(() => revenusMoisPrec.value > 0 ? Math.max(
 // Deltas
 const deltaRevenus  = computed(() => revenusCeMois.value - revenusMoisPrec.value)
 const deltaDepenses = computed(() => depensesCeMois.value - depensesMoisPrec.value)
-const deltaSolde    = computed(() => soldeCeMois.value - soldeMoisPrec.value)
 const deltaTaux     = computed(() => tauxEpargne.value - tauxEpargneMoisPrec.value)
+
+// ─── Solde réel du compte actif ──────────────────────────────────
+// On lit directement le champ `solde` du compte depuis le store,
+// au lieu de recalculer revenus - dépenses (qui ignore l'historique).
+const soldeReel = computed(() => {
+  const compte = comptesStore.tousLesComptes?.find(c => c.id === comptesStore.compteActifId)
+  // Fallback sur le net du mois si le compte n'a pas encore de champ solde
+  return compte?.solde ?? soldeCeMois.value
+})
 
 // ─── Comparaison détaillée ────────────────────────────────────────
 const comparaisonItems = computed(() => {
@@ -503,7 +510,7 @@ const comparaisonItems = computed(() => {
       pctPrec: Math.round((depensesMoisPrec.value / maxDep) * 100),
       pctCurr: Math.round((depensesCeMois.value / maxDep) * 100),
       deltaPct: pctChange(depensesCeMois.value, depensesMoisPrec.value),
-      deltaPositif: depensesCeMois.value <= depensesMoisPrec.value, // moins de dépenses = positif
+      deltaPositif: depensesCeMois.value <= depensesMoisPrec.value,
       color: 'var(--red)'
     },
     {
@@ -569,40 +576,24 @@ const prevision = computed(() => {
   const joursTotal   = new Date(today.getFullYear(), today.getMonth() + 1, 0).getDate()
   const joursRestants = joursTotal - jourDuMois
 
-  // Dépenses actuelles ce mois
   const depActuelles = depensesCeMois.value
-
-  // Rythme journalier moyen
   const rythmePJ = jourDuMois > 0 ? depActuelles / jourDuMois : 0
 
-  // Dépenses récurrentes pas encore passées ce mois
   const recurrentsPasEncore = financeStore.depenses
     .filter(d => {
       if (!d.recurrent || !d.createdAt) return false
       const dd = d.createdAt.toDate ? d.createdAt.toDate() : new Date(d.createdAt)
-      // Si la dernière occurrence était le mois dernier → pas encore passée ce mois
       return dd.getMonth() !== today.getMonth() || dd.getFullYear() !== today.getFullYear()
     })
     .reduce((s, d) => s + d.montant, 0)
 
-  // Projection dépenses fin de mois
   const depProjectees = depActuelles + (rythmePJ * joursRestants) + recurrentsPasEncore
-  
-  // Revenus attendus (on garde les revenus actuels comme base)
   const revProjectes  = revenusCeMois.value
-
-  // Solde prévu
   const soldePrevu    = revProjectes - depProjectees
-  
-  // % du mois écoulé
   const pctMois       = Math.round((jourDuMois / joursTotal) * 100)
-
-  // Budget restant par jour
   const budgetRestant = Math.max(0, revProjectes - depActuelles)
   const budgetPJ      = joursRestants > 0 ? budgetRestant / joursRestants : 0
-
-  // Tendance : en avance ou en retard sur l'objectif d'épargne ?
-  const objectifEpargne = revProjectes * 0.20 // 20% d'épargne = objectif par défaut
+  const objectifEpargne = revProjectes * 0.20
   const tendance = soldePrevu >= objectifEpargne ? 'bonne' : soldePrevu >= 0 ? 'neutre' : 'mauvaise'
 
   return {
@@ -668,7 +659,6 @@ onMounted(async () => {
   unsubs.push(financeStore.ecouter_depenses())
   unsubs.push(financeStore.ecouter_budgets())
   unsubs.push(financeStore.ecouter_objectifs())
-  // Écoute les comptes + auto-sélection compte courant
   unsubs.push(comptesStore.ecouter_comptes())
   const stopWatch = watch(
     () => comptesStore.comptes,
@@ -682,7 +672,6 @@ onMounted(async () => {
     { immediate: true }
   )
 
-  // Attendre que les données soient chargées puis traiter les récurrents
   setTimeout(async () => {
     const nb = await processRecurringTransactions()
     if (nb > 0) notifRecurrents.value = nb

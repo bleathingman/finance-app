@@ -23,23 +23,68 @@ export const COMPTE_COLORS = [
 
 export const useComptesStore = defineStore('comptes', () => {
   const authStore = useAuthStore()
-  const comptes   = ref([])
-  // ID du compte actif — null = tous les comptes
+
+  // Lazy-load pour éviter les dépendances circulaires (finance importe comptes)
+  function getFinanceStore() {
+    try {
+      const { useFinanceStore } = require('./finance')
+      return useFinanceStore()
+    } catch { return null }
+  }
+
+  const comptes       = ref([])
   const compteActifId = ref(null)
+
+  // ─── Calcul du solde réel d'un compte ─────────────────────────
+  // solde = soldeInitial + total revenus du compte - total dépenses du compte
+  // (toutes périodes confondues, pas seulement le mois courant)
+  function calculerSolde(compteId) {
+    const finance = getFinanceStore()
+    if (!finance) return 0
+
+    const revenus  = finance.revenus.filter(r => (r.compteId || null) === compteId)
+    const depenses = finance.depenses.filter(d => (d.compteId || null) === compteId)
+
+    const totalRevenus  = revenus.reduce((s, r) => s + (r.montant || 0), 0)
+    const totalDepenses = depenses.reduce((s, d) => s + (d.montant || 0), 0)
+
+    // On cherche le soldeInitial du compte concerné
+    const compte = comptes.value.find(c => c.id === compteId)
+    const soldeInitial = compte?.soldeInitial || 0
+
+    return soldeInitial + totalRevenus - totalDepenses
+  }
 
   // ─── Computed ──────────────────────────────────────────────────
   const compteActif = computed(() =>
     comptes.value.find(c => c.id === compteActifId.value) || null
   )
 
-  // Compte "Tous les comptes" virtuel
-  const tousLesComptes = computed(() => [
-    { id: null, nom: 'Tous les comptes', emoji: '🔀', couleur: '#00e5a0' },
-    ...comptes.value
-  ])
+  // Enrichit chaque compte avec son solde calculé dynamiquement
+  const comptesAvecSolde = computed(() =>
+    comptes.value.map(c => ({
+      ...c,
+      solde: calculerSolde(c.id)
+    }))
+  )
+
+  // Compte virtuel "Tous les comptes" avec solde global consolidé
+  const tousLesComptes = computed(() => {
+    const soldeGlobal = comptesAvecSolde.value.reduce((s, c) => s + c.solde, 0)
+    return [
+      { id: null, nom: 'Tous les comptes', emoji: '🔀', couleur: '#00e5a0', solde: soldeGlobal },
+      ...comptesAvecSolde.value
+    ]
+  })
+
+  // Solde du compte actif (ou consolidé si tous)
+  const soldeActif = computed(() => {
+    const compte = tousLesComptes.value.find(c => c.id === compteActifId.value)
+    return compte?.solde ?? 0
+  })
 
   function getCompte(id) {
-    return comptes.value.find(c => c.id === id) || null
+    return comptesAvecSolde.value.find(c => c.id === id) || null
   }
 
   function getTypeInfo(typeId) {
@@ -50,7 +95,7 @@ export const useComptesStore = defineStore('comptes', () => {
   async function ajouterCompte(data) {
     const uid = authStore.user?.uid
     if (!uid) return
-    const ref = await addDoc(collection(db, 'comptes'), {
+    const docRef = await addDoc(collection(db, 'comptes'), {
       uid,
       nom:          data.nom,
       type:         data.type || 'courant',
@@ -58,7 +103,7 @@ export const useComptesStore = defineStore('comptes', () => {
       soldeInitial: data.soldeInitial || 0,
       createdAt:    Timestamp.now()
     })
-    return ref.id
+    return docRef.id
   }
 
   async function modifierCompte(id, data) {
@@ -91,9 +136,11 @@ export const useComptesStore = defineStore('comptes', () => {
   }
 
   return {
-    comptes, compteActifId, compteActif, tousLesComptes,
+    comptes, compteActifId, compteActif,
+    comptesAvecSolde, tousLesComptes, soldeActif,
     getCompte, getTypeInfo,
     ajouterCompte, modifierCompte, supprimerCompte,
-    ecouter_comptes, setCompteActif
+    ecouter_comptes, setCompteActif,
+    calculerSolde
   }
 })
