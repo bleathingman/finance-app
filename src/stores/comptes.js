@@ -24,76 +24,29 @@ export const COMPTE_COLORS = [
 export const useComptesStore = defineStore('comptes', () => {
   const authStore = useAuthStore()
 
-  // Lazy-load pour éviter les dépendances circulaires
-  function getFinanceStore() {
-    try {
-      const { useFinanceStore } = require('./finance')
-      return useFinanceStore()
-    } catch { return null }
-  }
-
   const comptes       = ref([])
   const compteActifId = ref(null)
 
-  // ─── ID du compte par défaut (le premier courant créé) ────────
+  // ─── ID du compte par défaut (premier courant, sinon premier tout court) ──
   const compteDefautId = computed(() => {
     const courant = comptes.value.find(c => c.type === 'courant')
     return courant?.id || comptes.value[0]?.id || null
   })
-
-  // ─── Calcul du solde réel d'un compte ─────────────────────────
-  // Les transactions sans compteId sont rattachées au compte par défaut.
-  // Cela assure la compatibilité avec les données des users free
-  // qui n'avaient pas de compteId sur leurs transactions.
-  function calculerSolde(compteId) {
-    const finance = getFinanceStore()
-    if (!finance) return 0
-
-    const estCeCompte = (tx) => {
-      if (tx.compteId) return tx.compteId === compteId
-      // Pas de compteId → rattaché au compte par défaut
-      return compteId === compteDefautId.value
-    }
-
-    const revenus  = finance.revenus.filter(estCeCompte)
-    const depenses = finance.depenses.filter(estCeCompte)
-
-    const totalRevenus  = revenus.reduce((s, r) => s + (r.montant || 0), 0)
-    const totalDepenses = depenses.reduce((s, d) => s + (d.montant || 0), 0)
-
-    const compte = comptes.value.find(c => c.id === compteId)
-    const soldeInitial = compte?.soldeInitial || 0
-
-    return soldeInitial + totalRevenus - totalDepenses
-  }
 
   // ─── Computed ──────────────────────────────────────────────────
   const compteActif = computed(() =>
     comptes.value.find(c => c.id === compteActifId.value) || null
   )
 
-  const comptesAvecSolde = computed(() =>
-    comptes.value.map(c => ({
-      ...c,
-      solde: calculerSolde(c.id)
-    }))
-  )
-
-  const tousLesComptes = computed(() => {
-    const soldeGlobal = comptesAvecSolde.value.reduce((s, c) => s + c.solde, 0)
-    return [
-      { id: null, nom: 'Tous les comptes', emoji: '🔀', couleur: '#00e5a0', solde: soldeGlobal },
-      ...comptesAvecSolde.value
-    ]
-  })
-
-  const soldeActif = computed(() => {
-    const compte = tousLesComptes.value.find(c => c.id === compteActifId.value)
-    return compte?.solde ?? 0
-  })
+  // Compte virtuel "Tous les comptes" — le solde est injecté par le Dashboard
+  // car c'est lui qui a accès aux deux stores sans dépendance circulaire
+  const tousLesComptes = computed(() => [
+    { id: null, nom: 'Tous les comptes', emoji: '🔀', couleur: '#00e5a0' },
+    ...comptes.value
+  ])
 
   function getCompte(id) {
-    return comptesAvecSolde.value.find(c => c.id === id) || null
+    return comptes.value.find(c => c.id === id) || null
   }
 
   function getTypeInfo(typeId) {
@@ -101,23 +54,18 @@ export const useComptesStore = defineStore('comptes', () => {
   }
 
   // ─── Initialisation compte par défaut ─────────────────────────
-  // Appelé au démarrage pour TOUS les users (free et pro).
-  // Si l'user n'a aucun compte → crée un "Compte Courant" automatiquement.
-  // Résultat : quand un user free passe Pro, ses transactions existantes
-  // (sans compteId) sont déjà rattachées à ce compte via calculerSolde().
+  // Crée un "Compte Courant" si l'user n'en a aucun.
+  // Appelé pour TOUS les users (free et pro) au démarrage.
   async function initialiserCompteDefaut() {
     const uid = authStore.user?.uid
     if (!uid) return null
 
-    // Si des comptes sont déjà chargés en mémoire, rien à faire
     if (comptes.value.length > 0) return compteDefautId.value
 
-    // Vérifie aussi en base (cas du premier render avant que onSnapshot réponde)
     const q = query(collection(db, 'comptes'), where('uid', '==', uid), limit(1))
     const snap = await getDocs(q)
     if (!snap.empty) return snap.docs[0].id
 
-    // Aucun compte → crée le compte courant par défaut
     const docRef = await addDoc(collection(db, 'comptes'), {
       uid,
       nom:          'Compte Courant',
@@ -176,11 +124,10 @@ export const useComptesStore = defineStore('comptes', () => {
   }
 
   return {
-    comptes, compteActifId, compteActif, compteDefautId,
-    comptesAvecSolde, tousLesComptes, soldeActif,
+    comptes, compteActifId, compteActif, compteDefautId, tousLesComptes,
     getCompte, getTypeInfo,
     ajouterCompte, modifierCompte, supprimerCompte,
     ecouter_comptes, setCompteActif,
-    calculerSolde, initialiserCompteDefaut
+    initialiserCompteDefaut
   }
 })

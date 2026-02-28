@@ -15,14 +15,6 @@ export const useFinanceStore = defineStore('finance', () => {
     try { return useSubscriptionStore() } catch { return null }
   }
 
-  // Lazy-load pour éviter les dépendances circulaires
-  function getComptesStore() {
-    try {
-      const { useComptesStore } = require('./comptes')
-      return useComptesStore()
-    } catch { return null }
-  }
-
   const revenus   = ref([])
   const depenses  = ref([])
   const budgets   = ref([])
@@ -34,13 +26,6 @@ export const useFinanceStore = defineStore('finance', () => {
     if (!dateStr) return Timestamp.now()
     const [y, m, d] = dateStr.split('-').map(Number)
     return Timestamp.fromDate(new Date(y, m - 1, d, 12, 0, 0))
-  }
-
-  // Retourne le compteId à utiliser : celui fourni, ou le compte par défaut
-  function resolveCompteId(compteIdFourni) {
-    if (compteIdFourni) return compteIdFourni
-    const comptes = getComptesStore()
-    return comptes?.compteDefautId ?? null
   }
 
   // ─── Filtre mois courant ──────────────────────────────────────────
@@ -96,8 +81,7 @@ export const useFinanceStore = defineStore('finance', () => {
         recurrent:   data.recurrent || false,
         date:        data.date,
         uid,
-        // Toujours stocker un compteId : celui fourni ou le compte par défaut
-        compteId:    resolveCompteId(data.compteId),
+        compteId:    data.compteId || null,
         createdAt:   dateToTimestamp(data.date)
       })
     } catch (e) { console.error('Erreur ajout revenu:', e); throw e }
@@ -111,7 +95,7 @@ export const useFinanceStore = defineStore('finance', () => {
         montant:     data.montant,
         recurrent:   data.recurrent || false,
         date:        data.date,
-        compteId:    resolveCompteId(data.compteId),
+        compteId:    data.compteId || null,
         createdAt:   dateToTimestamp(data.date)
       })
     } catch (e) { console.error('Erreur modification revenu:', e); throw e }
@@ -145,8 +129,7 @@ export const useFinanceStore = defineStore('finance', () => {
         recurrent:   data.recurrent || false,
         date:        data.date,
         uid,
-        // Toujours stocker un compteId : celui fourni ou le compte par défaut
-        compteId:    resolveCompteId(data.compteId),
+        compteId:    data.compteId || null,
         createdAt:   dateToTimestamp(data.date)
       })
     } catch (e) { console.error('Erreur ajout dépense:', e); throw e }
@@ -160,7 +143,7 @@ export const useFinanceStore = defineStore('finance', () => {
         montant:     data.montant,
         recurrent:   data.recurrent || false,
         date:        data.date,
-        compteId:    resolveCompteId(data.compteId),
+        compteId:    data.compteId || null,
         createdAt:   dateToTimestamp(data.date)
       })
     } catch (e) { console.error('Erreur modification dépense:', e); throw e }
