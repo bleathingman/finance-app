@@ -187,7 +187,7 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted, onUnmounted } from 'vue'
+import { ref, computed, onMounted, onUnmounted, watch } from 'vue'
 import { useComptesStore, COMPTE_TYPES, COMPTE_COLORS } from '@/stores/comptes'
 import { useFinanceStore } from '@/stores/finance'
 import PremiumGate from '@/components/PremiumGate.vue'
@@ -284,7 +284,21 @@ async function doDelete() {
 
 // ─── Lifecycle ────────────────────────────────────────────────────
 let unsub = null
-onMounted(() => { unsub = comptesStore.ecouter_comptes() })
+onMounted(() => {
+  unsub = comptesStore.ecouter_comptes()
+  // Auto-sélectionne le compte courant par défaut (ou le premier compte)
+  const stopWatch = watch(
+    () => comptesStore.comptes,
+    (comptes) => {
+      if (comptes.length > 0 && !comptesStore.compteActifId) {
+        const courant = comptes.find(c => c.type === 'courant') || comptes[0]
+        comptesStore.setCompteActif(courant.id)
+        stopWatch()
+      }
+    },
+    { immediate: true }
+  )
+})
 onUnmounted(() => { unsub && unsub() })
 </script>
 
