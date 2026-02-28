@@ -375,6 +375,7 @@ import { useFinanceStore } from '@/stores/finance'
 import { useSubscriptionStore } from '@/stores/subscription'
 import { useComptesStore } from '@/stores/comptes'
 import { processRecurringTransactions } from '@/stores/recurring'
+import { migrerTransactionsSansCompte } from '@/stores/migration'
 
 Chart.register(...registerables)
 
@@ -645,7 +646,13 @@ onMounted(async () => {
   // S'exécute pour TOUS les users (free et pro).
   // Garantit que les transactions futures ont toujours un compteId,
   // et que les anciennes (sans compteId) sont rattachées à ce compte via calculerSolde().
-  await comptesStore.initialiserCompteDefaut()
+  const compteDefautId = await comptesStore.initialiserCompteDefaut()
+
+  // Migration one-shot : rattache en base toutes les transactions sans compteId
+  // au compte par défaut. Idempotente grâce au flag localStorage.
+  if (authStore.user?.uid && compteDefautId) {
+    await migrerTransactionsSansCompte(authStore.user.uid, compteDefautId)
+  }
 
   const stopWatch = watch(
     () => comptesStore.comptes,
