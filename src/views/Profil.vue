@@ -34,7 +34,7 @@
         </div>
 
         <!-- Plan actuel -->
-        <div class="card plan-card">
+        <div class="card plan-card" style="margin-top:16px">
           <div class="plan-header">
             <span class="plan-emoji">{{ subStore.isPro ? '🚀' : subStore.isPaid ? '💎' : '🌱' }}</span>
             <div>
