@@ -198,17 +198,26 @@ const financeStore = useFinanceStore()
 const comptes = computed(() => comptesStore.comptes)
 
 // ─── Stats par compte ──────────────────────────────────────────────
+const compteCourantId = computed(() =>
+  comptes.value.find(c => c.type === 'courant')?.id || comptes.value[0]?.id || null
+)
+
 const comptesAvecStats = computed(() => {
-  return comptes.value.map(c => {
-    const rev = financeStore.revenus.filter(r => r.compteId === c.id)
-    const dep = financeStore.depenses.filter(d => d.compteId === c.id)
-    const revenus   = rev.reduce((s, r) => s + r.montant, 0)
-    const depenses  = dep.reduce((s, d) => s + d.montant, 0)
+  return comptes.value.map(compte => {
+    // Les tx sans compteId appartiennent au compte courant par défaut
+    const rev = financeStore.revenus.filter(r =>
+      r.compteId === compte.id || (!r.compteId && compte.id === compteCourantId.value)
+    )
+    const dep = financeStore.depenses.filter(d =>
+      d.compteId === compte.id || (!d.compteId && compte.id === compteCourantId.value)
+    )
+    const revenus  = rev.reduce((s, r) => s + r.montant, 0)
+    const depenses = dep.reduce((s, d) => s + d.montant, 0)
     return {
-      ...c,
+      ...compte,
       revenus,
       depenses,
-      solde: (c.soldeInitial || 0) + revenus - depenses
+      solde: (compte.soldeInitial || 0) + revenus - depenses
     }
   })
 })
@@ -223,11 +232,12 @@ const txFiltrees = computed(() => {
   const id = comptesStore.compteActifId
   if (!id) return []
   const catEmoji = { 'Nourriture':'🍔','Transport':'🚗','Loyer':'🏠','Loisirs':'🎮','Abonnements':'📦','Santé':'🏥','Vêtements':'👕','Banque / Assurance':'🏦','Autres':'💳' }
+  const courantId = compteCourantId.value
   const revs = financeStore.revenus
-    .filter(r => r.compteId === id)
+    .filter(r => r.compteId === id || (!r.compteId && id === courantId))
     .map(r => ({ ...r, type: 'revenu', emoji: '💰' }))
   const deps = financeStore.depenses
-    .filter(d => d.compteId === id)
+    .filter(d => d.compteId === id || (!d.compteId && id === courantId))
     .map(d => ({ ...d, type: 'depense', emoji: catEmoji[d.categorie] || '💳' }))
   const all = [...revs, ...deps].sort((a, b) => (b.createdAt?.seconds || 0) - (a.createdAt?.seconds || 0))
   if (filtreType.value === 'all') return all
