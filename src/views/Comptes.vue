@@ -114,6 +114,7 @@
     </PremiumGate>
 
     <!-- ─── Modal créer/modifier compte ─────────────────────────── -->
+    <Teleport to="body">
     <transition name="fade">
       <div v-if="showModal" class="modal-overlay" @click.self="showModal = false">
         <div class="modal-box">
@@ -162,8 +163,10 @@
         </div>
       </div>
     </transition>
+    </Teleport>
 
     <!-- ─── Modal confirmation suppression ──────────────────────── -->
+    <Teleport to="body">
     <transition name="fade">
       <div v-if="deleteConfirm" class="modal-overlay" @click.self="deleteConfirm = null">
         <div class="modal-box">
@@ -179,6 +182,7 @@
         </div>
       </div>
     </transition>
+    </Teleport>
   </div>
 </template>
 
