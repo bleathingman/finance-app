@@ -7,25 +7,34 @@
         <h1>Statistiques</h1>
         <p>Analyse complète de vos finances</p>
       </div>
-      <div style="display:flex;gap:8px">
+      <div>
         <router-link v-if="!subStore.can('exportCsv')" to="/pricing" class="btn btn-ghost" style="border-color:var(--border-accent);color:var(--accent)">
-          💎 Export CSV/PDF
+          💎 Exporter
         </router-link>
-        <template v-else>
-          <button class="btn btn-ghost" @click="exportCSV">
-            <svg width="15" height="15" viewBox="0 0 24 24" fill="none">
-              <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M7 10l5 5 5-5M12 15V3" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-            </svg>
-            Export CSV
+        <div v-else class="export-wrap">
+          <button class="btn btn-ghost" @click.stop="showExportMenu = !showExportMenu">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M7 10l5 5 5-5M12 15V3" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+            Exporter
+            <svg width="11" height="11" viewBox="0 0 24 24" fill="none" :style="{ transform: showExportMenu ? 'rotate(180deg)' : 'none', transition: 'transform 0.2s' }"><polyline points="6 9 12 15 18 9" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
           </button>
-          <button class="btn btn-ghost" @click="exportPDF">
-            <svg width="15" height="15" viewBox="0 0 24 24" fill="none">
-              <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
-              <polyline points="14 2 14 8 20 8" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
-            </svg>
-            Export PDF
-          </button>
-        </template>
+          <transition name="dropdown">
+            <div v-if="showExportMenu" class="export-menu" @click.stop>
+              <button class="export-item" @click="exportCSV('transactions'); showExportMenu = false">
+                <span class="export-icon">📊</span>
+                <div><div class="export-title">CSV — Transactions</div><div class="export-sub">Toutes les transactions avec détails</div></div>
+              </button>
+              <button class="export-item" @click="exportCSV('bilan'); showExportMenu = false">
+                <span class="export-icon">📋</span>
+                <div><div class="export-title">CSV — Bilan mensuel</div><div class="export-sub">Résumé revenus / dépenses / épargne</div></div>
+              </button>
+              <div class="export-separator"></div>
+              <button class="export-item" @click="exportPDF(); showExportMenu = false">
+                <span class="export-icon">🖨️</span>
+                <div><div class="export-title">PDF / Impression</div><div class="export-sub">Rapport complet mis en page</div></div>
+              </button>
+            </div>
+          </transition>
+        </div>
       </div>
     </div>
 
@@ -258,6 +267,8 @@ const comptesStore = useComptesStore()
 // ─── State ────────────────────────────────────────────────────────
 const periode        = ref(6)
 const projectionMois = ref(6)
+const showExportMenu = ref(false)
+const showExportMenu = ref(false)
 const lineChartRef   = ref(null)
 const donutChartRef  = ref(null)
 const soldeChartRef  = ref(null)
@@ -576,20 +587,90 @@ function buildSoldeChart() {
 }
 
 // ─── Export ───────────────────────────────────────────────────────
-function exportCSV() {
-  const rows = [
-    ['Mois', 'Revenus', 'Dépenses', 'Épargne'],
-    ...bilanMensuel.value.map(m => [m.label, m.revenus.toFixed(2), m.depenses.toFixed(2), m.epargne.toFixed(2)])
-  ]
-  const csv = rows.map(r => r.join(';')).join('\n')
-  const blob = new Blob(['\uFEFF' + csv], { type: 'text/csv;charset=utf-8;' })
-  const url = URL.createObjectURL(blob)
-  const a = document.createElement('a')
-  a.href = url; a.download = `financeflow-stats-${new Date().toISOString().split('T')[0]}.csv`
-  a.click(); URL.revokeObjectURL(url)
+function fmtDateFR(tx) {
+  const d = txDate(tx)
+  return d ? d.toLocaleDateString('fr-FR') : ''
 }
 
-function exportPDF() { window.print() }
+function downloadBlob(content, filename) {
+  const blob = new Blob(['\uFEFF' + content], { type: 'text/csv;charset=utf-8;' })
+  const url = URL.createObjectURL(blob)
+  const a = document.createElement('a')
+  a.href = url; a.download = filename; a.click()
+  URL.revokeObjectURL(url)
+}
+
+function exportCSV(type = 'transactions') {
+  const date = new Date().toISOString().split('T')[0]
+  if (type === 'bilan') {
+    const rows = [
+      ['Mois', 'Revenus (EUR)', 'Depenses (EUR)', 'Epargne (EUR)', 'Taux (%)'],
+      ...bilanMensuel.value.map(m => [m.label, m.revenus.toFixed(2), m.depenses.toFixed(2), m.epargne.toFixed(2), m.revenus > 0 ? Math.round((m.epargne / m.revenus) * 100) : 0])
+    ]
+    downloadBlob(rows.map(r => r.join(';')).join('\n'), `financeflow-bilan-${date}.csv`)
+    return
+  }
+  const rows = [['Date', 'Type', 'Categorie', 'Description', 'Montant (EUR)', 'Recurrent']]
+  financeStore.revenus.forEach(t => rows.push([fmtDateFR(t), 'Revenu', t.categorie || '', t.description || t.libelle || '', t.montant.toFixed(2), t.recurrent ? 'Oui' : 'Non']))
+  financeStore.depenses.forEach(t => rows.push([fmtDateFR(t), 'Depense', t.categorie || '', t.description || t.libelle || '', (-t.montant).toFixed(2), t.recurrent ? 'Oui' : 'Non']))
+  const header = rows.shift()
+  rows.sort((a, b) => b[0].split('/').reverse().join('-').localeCompare(a[0].split('/').reverse().join('-')))
+  rows.unshift(header)
+  downloadBlob(rows.map(r => r.map(c => `"${String(c)}"`).join(';')).join('\n'), `financeflow-transactions-${date}.csv`)
+}
+
+function exportPDF() {
+  const date = new Date().toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' })
+  const bilanRows = bilanMensuel.value.map(m =>
+    `<tr><td>${m.label}</td><td class="pos">+${formatAmount(m.revenus)}</td><td class="neg">-${formatAmount(m.depenses)}</td><td class="${m.epargne >= 0 ? 'pos' : 'neg'}">${m.epargne >= 0 ? '+' : ''}${formatAmount(m.epargne)}</td><td>${m.revenus > 0 ? Math.round((m.epargne / m.revenus) * 100) : 0}%</td></tr>`
+  ).join('')
+  const catRows = depensesParCat.value.map(c =>
+    `<tr><td>${c.emoji} ${c.nom}</td><td>${formatAmount(c.total)}</td><td>${c.pct}%</td></tr>`
+  ).join('')
+  const catDom = categorieDominante.value
+  const sc = soldeActuel.value >= 0 ? '#00b894' : '#e17055'
+  const catStr = catDom ? catDom.emoji + ' ' + catDom.nom : '—'
+  const html = `<!DOCTYPE html><html lang="fr"><head><meta charset="UTF-8"><title>FinanceFlow - Rapport</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;color:#1a1a2e;padding:32px;font-size:13px;line-height:1.5}
+header{display:flex;justify-content:space-between;align-items:flex-end;margin-bottom:32px;padding-bottom:16px;border-bottom:3px solid #00c49f}
+h1{font-size:22px;font-weight:800;color:#00c49f}.meta{font-size:12px;color:#888;text-align:right}
+h2{font-size:11px;font-weight:700;margin:28px 0 12px;padding-bottom:6px;border-bottom:2px solid #f0f0f0;text-transform:uppercase;letter-spacing:.08em;color:#666}
+.kpis{display:grid;grid-template-columns:repeat(4,1fr);gap:12px}
+.kpi{background:#f8f9ff;border-radius:10px;padding:14px;border:1px solid #e8eaf6}
+.kpi-l{font-size:10px;color:#999;font-weight:700;text-transform:uppercase;margin-bottom:4px}
+.kpi-v{font-size:16px;font-weight:800;color:#00c49f}.kpi-s{font-size:11px;color:#aaa;margin-top:3px}
+table{width:100%;border-collapse:collapse;font-size:12px}
+th{background:#f5f7ff;font-weight:700;padding:10px 14px;text-align:left;color:#666;font-size:10px;text-transform:uppercase;letter-spacing:.05em;border-bottom:2px solid #e8eaf6}
+td{padding:10px 14px;border-bottom:1px solid #f3f4f6}tr:nth-child(even) td{background:#fafbff}
+.pos{color:#00b894;font-weight:600}.neg{color:#e17055;font-weight:600}
+footer{margin-top:48px;padding-top:16px;border-top:1px solid #eee;font-size:11px;color:#bbb;display:flex;justify-content:space-between}
+@media print{@page{margin:1.5cm}}
+</style></head><body>
+<header>
+  <div><h1>FinanceFlow</h1><div style="font-size:13px;color:#555;margin-top:4px">Rapport financier</div></div>
+  <div class="meta"><div>Généré le ${date}</div><div>Période : ${periode.value} derniers mois</div></div>
+</header>
+<h2>Résumé</h2>
+<div class="kpis">
+  <div class="kpi"><div class="kpi-l">Épargne moyenne</div><div class="kpi-v">${formatAmount(epargneMoyenne.value)}</div><div class="kpi-s">par mois</div></div>
+  <div class="kpi"><div class="kpi-l">Taux d'épargne</div><div class="kpi-v">${tauxEpargne.value}%</div><div class="kpi-s">objectif 20%</div></div>
+  <div class="kpi"><div class="kpi-l">Solde actuel</div><div class="kpi-v" style="color:${sc}">${formatAmount(soldeActuel.value)}</div><div class="kpi-s">${variationSolde.value >= 0 ? '+' : ''}${formatAmount(variationSolde.value)} sur la période</div></div>
+  <div class="kpi"><div class="kpi-l">Catégorie dom.</div><div class="kpi-v" style="font-size:14px">${catStr}</div><div class="kpi-s">${formatAmount(catDom?.total)}</div></div>
+</div>
+<h2>Bilan mensuel</h2>
+<table><thead><tr><th>Mois</th><th>Revenus</th><th>Dépenses</th><th>Épargne</th><th>Taux</th></tr></thead><tbody>${bilanRows}</tbody></table>
+<h2>Dépenses par catégorie</h2>
+<table><thead><tr><th>Catégorie</th><th>Total</th><th>Part</th></tr></thead><tbody>${catRows}</tbody></table>
+<footer><span>FinanceFlow — Document confidentiel</span><span>${date}</span></footer>
+<script>window.onload=()=>setTimeout(()=>window.print(),400)<\/script>
+</body></html>`
+  const win = window.open('', '_blank')
+  if (!win) { alert('Autorisez les popups pour générer le PDF.'); return }
+  win.document.write(html)
+  win.document.close()
+}
 
 // ─── Lifecycle ────────────────────────────────────────────────────
 let unsubs = []
@@ -606,6 +687,7 @@ watch([bilanMensuel, depensesParCat, evolutionSolde], async () => {
 onMounted(() => {
   unsubs.push(financeStore.ecouter_revenus())
   unsubs.push(financeStore.ecouter_depenses())
+  document.addEventListener('click', () => { showExportMenu.value = false })
   nextTick(() => {
     if (hasData.value) {
       buildLineChart()
@@ -670,4 +752,19 @@ onUnmounted(() => {
   .bilan-progress { grid-column:1/-1 }
 }
 @media print { .btn { display:none } }
+
+/* ─── Export dropdown ────────────────────────────────────────────── */
+.export-wrap { position:relative }
+.export-menu { position:absolute;right:0;top:calc(100% + 8px);background:var(--bg-surface);border:1px solid var(--border);border-radius:var(--radius);min-width:240px;box-shadow:0 8px 32px rgba(0,0,0,0.3);z-index:100;overflow:hidden;padding:6px }
+.export-item { display:flex;align-items:center;gap:12px;width:100%;padding:10px 12px;background:none;border:none;cursor:pointer;border-radius:8px;text-align:left;transition:background var(--transition);color:var(--text-primary) }
+.export-item:hover { background:var(--bg-elevated) }
+.export-icon  { font-size:18px;flex-shrink:0;width:24px;text-align:center }
+.export-title { font-size:13px;font-weight:600;margin-bottom:1px }
+.export-sub   { font-size:11px;color:var(--text-muted) }
+.export-separator { height:1px;background:var(--border);margin:4px 0 }
+.dropdown-enter-active { transition:all 0.15s ease }
+.dropdown-leave-active { transition:all 0.1s ease }
+.dropdown-enter-from   { opacity:0;transform:translateY(-6px) }
+.dropdown-leave-to     { opacity:0;transform:translateY(-4px) }
+
 </style>
