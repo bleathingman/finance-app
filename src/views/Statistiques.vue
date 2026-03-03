@@ -8,11 +8,9 @@
         <p>Analyse complète de vos finances</p>
       </div>
       <div style="display:flex;gap:8px">
-        <!-- Non premium → un seul bouton CTA -->
         <router-link v-if="!subStore.can('exportCsv')" to="/pricing" class="btn btn-ghost" style="border-color:var(--border-accent);color:var(--accent)">
           💎 Export CSV/PDF
         </router-link>
-        <!-- Premium → deux boutons séparés -->
         <template v-else>
           <button class="btn btn-ghost" @click="exportCSV">
             <svg width="15" height="15" viewBox="0 0 24 24" fill="none">
@@ -108,6 +106,39 @@
       </div>
     </div>
 
+    <!-- ═══ Évolution du solde ════════════════════════════════════ -->
+    <div class="card" style="margin-bottom:28px">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px;flex-wrap:wrap;gap:12px">
+        <div>
+          <h3 style="font-family:var(--font-display)">Évolution du solde</h3>
+          <p style="font-size:13px;color:var(--text-muted);margin-top:2px">Solde cumulé jour après jour</p>
+        </div>
+        <div style="display:flex;align-items:center;gap:20px">
+          <div style="display:flex;flex-direction:column;align-items:flex-end">
+            <span style="font-size:12px;color:var(--text-muted)">Solde actuel</span>
+            <span
+              style="font-family:var(--font-display);font-size:1.1rem;font-weight:700"
+              :style="{ color: soldeActuel >= 0 ? 'var(--green)' : 'var(--red)' }"
+            >{{ formatAmount(soldeActuel) }}</span>
+          </div>
+          <div style="display:flex;flex-direction:column;align-items:flex-end">
+            <span style="font-size:12px;color:var(--text-muted)">Sur {{ periode }} mois</span>
+            <span
+              style="font-size:13px;font-weight:700"
+              :style="{ color: variationSolde >= 0 ? 'var(--green)' : 'var(--red)' }"
+            >{{ variationSolde >= 0 ? '+' : '' }}{{ formatAmount(variationSolde) }}</span>
+          </div>
+        </div>
+      </div>
+      <div v-if="hasData && evolutionSolde.length > 1" style="position:relative;height:240px">
+        <canvas ref="soldeChartRef"></canvas>
+      </div>
+      <div v-else class="empty-chart">
+        <span style="font-size:2rem">📉</span>
+        <p>Pas assez de données pour afficher l'évolution</p>
+      </div>
+    </div>
+
     <!-- Bilan mensuel détaillé -->
     <PremiumGate
       feature="advancedCharts"
@@ -162,7 +193,6 @@
       description="Prévisions d'épargne sur 6 ou 12 mois et conseils personnalisés basés sur vos habitudes financières."
     >
     <div class="grid-2">
-      <!-- Projection 6/12 mois -->
       <div class="card">
         <h3 style="font-family:var(--font-display);margin-bottom:20px">Projection épargne</h3>
         <div style="display:flex;gap:8px;margin-bottom:20px">
@@ -190,7 +220,6 @@
         </div>
       </div>
 
-      <!-- Insights -->
       <div class="card">
         <h3 style="font-family:var(--font-display);margin-bottom:20px">Insights 💡</h3>
         <div class="insights-list">
@@ -217,20 +246,24 @@ import { ref, computed, onMounted, onUnmounted, watch, nextTick } from 'vue'
 import { Chart, registerables } from 'chart.js'
 import { useFinanceStore } from '@/stores/finance'
 import { useSubscriptionStore } from '@/stores/subscription'
+import { useComptesStore } from '@/stores/comptes'
 import PremiumGate from '@/components/PremiumGate.vue'
 
 Chart.register(...registerables)
 
 const financeStore = useFinanceStore()
 const subStore     = useSubscriptionStore()
+const comptesStore = useComptesStore()
 
 // ─── State ────────────────────────────────────────────────────────
-const periode       = ref(6)
-const projectionMois= ref(6)
-const lineChartRef  = ref(null)
-const donutChartRef = ref(null)
+const periode        = ref(6)
+const projectionMois = ref(6)
+const lineChartRef   = ref(null)
+const donutChartRef  = ref(null)
+const soldeChartRef  = ref(null)
 let lineChart  = null
 let donutChart = null
+let soldeChart = null
 
 const periodes = [
   { val: 3,  label: '3 mois' },
@@ -240,12 +273,12 @@ const periodes = [
 
 // ─── Catégories ───────────────────────────────────────────────────
 const categories = [
-  { nom: 'Loyer',        emoji: '🏠', color: '#4facfe' },
-  { nom: 'Nourriture',   emoji: '🍔', color: '#00e5a0' },
-  { nom: 'Transport',    emoji: '🚗', color: '#ff9f43' },
-  { nom: 'Loisirs',      emoji: '🎮', color: '#c084fc' },
-  { nom: 'Abonnements',  emoji: '📦', color: '#fb7185' },
-  { nom: 'Santé',        emoji: '🏥', color: '#34d399' },
+  { nom: 'Loyer',              emoji: '🏠', color: '#4facfe' },
+  { nom: 'Nourriture',         emoji: '🍔', color: '#00e5a0' },
+  { nom: 'Transport',          emoji: '🚗', color: '#ff9f43' },
+  { nom: 'Loisirs',            emoji: '🎮', color: '#c084fc' },
+  { nom: 'Abonnements',        emoji: '📦', color: '#fb7185' },
+  { nom: 'Santé',              emoji: '🏥', color: '#34d399' },
   { nom: 'Vêtements',          emoji: '👕', color: '#f472b6' },
   { nom: 'Banque / Assurance', emoji: '🏦', color: '#60a5fa' },
   { nom: 'Autres',             emoji: '💳', color: '#94a3b8' }
@@ -274,6 +307,11 @@ function txMoisKey(tx) {
   if (!tx.createdAt) return ''
   const d = tx.createdAt.toDate ? tx.createdAt.toDate() : new Date(tx.createdAt)
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`
+}
+
+function txDate(tx) {
+  if (!tx.createdAt) return null
+  return tx.createdAt.toDate ? tx.createdAt.toDate() : new Date(tx.createdAt)
 }
 
 // ─── Computed ─────────────────────────────────────────────────────
@@ -335,32 +373,73 @@ const projections = computed(() => {
   return result
 })
 
+// ─── Évolution du solde ───────────────────────────────────────────
+const evolutionSolde = computed(() => {
+  const soldeInitial = comptesStore.compteDefautId
+    ? (comptesStore.tousLesComptes.find(c => c.id === comptesStore.compteDefautId)?.soldeInitial || 0)
+    : 0
+
+  const debut = new Date()
+  debut.setMonth(debut.getMonth() - periode.value)
+  debut.setHours(0, 0, 0, 0)
+
+  const txs = [
+    ...financeStore.revenus.map(t => ({ date: txDate(t), delta: t.montant })),
+    ...financeStore.depenses.map(t => ({ date: txDate(t), delta: -t.montant }))
+  ].filter(t => t.date && t.date >= debut).sort((a, b) => a.date - b.date)
+
+  if (!txs.length) return []
+
+  let cumul = soldeInitial
+  const points = [{
+    label: debut.toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' }),
+    solde: cumul
+  }]
+
+  // Regrouper par jour
+  const parJour = {}
+  txs.forEach(t => {
+    const key = t.date.toLocaleDateString('fr-FR', { day: 'numeric', month: 'short', year: '2-digit' })
+    parJour[key] = (parJour[key] || 0) + t.delta
+  })
+
+  Object.entries(parJour).forEach(([label, delta]) => {
+    cumul += delta
+    points.push({ label, solde: cumul })
+  })
+
+  return points
+})
+
+const soldeActuel    = computed(() => evolutionSolde.value.at(-1)?.solde ?? 0)
+const variationSolde = computed(() => {
+  if (evolutionSolde.value.length < 2) return 0
+  return evolutionSolde.value.at(-1).solde - evolutionSolde.value[0].solde
+})
+
+// ─── Insights ─────────────────────────────────────────────────────
 const insights = computed(() => {
   const list = []
   if (!hasData.value) return list
 
-  // Taux d'épargne
   if (tauxEpargne.value >= 20) {
-    list.push({ type: 'good', emoji: '🌟', title: 'Excellent taux d\'épargne', text: `Vous épargnez ${tauxEpargne.value}% de vos revenus. Continuez comme ça !` })
+    list.push({ type: 'good', emoji: '🌟', title: "Excellent taux d'épargne", text: `Vous épargnez ${tauxEpargne.value}% de vos revenus. Continuez comme ça !` })
   } else if (tauxEpargne.value >= 10) {
-    list.push({ type: 'warn', emoji: '💪', title: 'Bon taux d\'épargne', text: `Vous épargnez ${tauxEpargne.value}%. Essayez d'atteindre 20% pour être dans la zone idéale.` })
+    list.push({ type: 'warn', emoji: '💪', title: "Bon taux d'épargne", text: `Vous épargnez ${tauxEpargne.value}%. Essayez d'atteindre 20% pour être dans la zone idéale.` })
   } else if (tauxEpargne.value >= 0) {
-    list.push({ type: 'bad', emoji: '⚠️', title: 'Taux d\'épargne faible', text: `Seulement ${tauxEpargne.value}% d'épargne. Identifiez les postes à réduire.` })
+    list.push({ type: 'bad', emoji: '⚠️', title: "Taux d'épargne faible", text: `Seulement ${tauxEpargne.value}% d'épargne. Identifiez les postes à réduire.` })
   } else {
-    list.push({ type: 'bad', emoji: '🚨', title: 'Dépenses supérieures aux revenus', text: `Vous dépensez plus que vous ne gagnez ce mois-ci. Attention !` })
+    list.push({ type: 'bad', emoji: '🚨', title: 'Dépenses supérieures aux revenus', text: 'Vous dépensez plus que vous ne gagnez ce mois-ci. Attention !' })
   }
 
-  // Catégorie dominante
   if (categorieDominante.value && categorieDominante.value.pct > 40) {
     list.push({ type: 'warn', emoji: '📊', title: 'Concentration élevée', text: `${categorieDominante.value.emoji} ${categorieDominante.value.nom} représente ${categorieDominante.value.pct}% de vos dépenses.` })
   }
 
-  // Épargne projetée
   if (epargneMoyenne.value > 0) {
     list.push({ type: 'info', emoji: '🔮', title: 'Projection 12 mois', text: `À ce rythme, vous économiserez ${formatAmount(epargneMoyenne.value * 12)} en un an.` })
   }
 
-  // Récurrents
   const totalRec = financeStore.depenses.filter(d => d.recurrent).reduce((s, d) => s + d.montant, 0)
   const totalDep = financeStore.depenses.reduce((s, d) => s + d.montant, 0)
   if (totalDep > 0 && (totalRec / totalDep) > 0.5) {
@@ -374,44 +453,25 @@ const insights = computed(() => {
 const chartDefaults = {
   responsive: true,
   maintainAspectRatio: false,
-  plugins: { legend: { display: false }, tooltip: { backgroundColor: '#1a1e2e', borderColor: '#ffffff10', borderWidth: 1, padding: 10 } }
+  plugins: {
+    legend: { display: false },
+    tooltip: { backgroundColor: '#1a1e2e', borderColor: '#ffffff10', borderWidth: 1, padding: 10 }
+  }
 }
 
 function buildLineChart() {
   if (!lineChartRef.value) return
   if (lineChart) { lineChart.destroy(); lineChart = null }
-
-  const labels  = bilanMensuel.value.map(m => m.label)
+  const labels   = bilanMensuel.value.map(m => m.label)
   const revenus  = bilanMensuel.value.map(m => m.revenus)
   const depenses = bilanMensuel.value.map(m => m.depenses)
-
   lineChart = new Chart(lineChartRef.value, {
     type: 'line',
     data: {
       labels,
       datasets: [
-        {
-          label: 'Revenus',
-          data: revenus,
-          borderColor: '#00e5a0',
-          backgroundColor: 'rgba(0,229,160,0.08)',
-          fill: true,
-          tension: 0.4,
-          pointBackgroundColor: '#00e5a0',
-          pointRadius: 4,
-          pointHoverRadius: 6
-        },
-        {
-          label: 'Dépenses',
-          data: depenses,
-          borderColor: '#ff6b6b',
-          backgroundColor: 'rgba(255,107,107,0.08)',
-          fill: true,
-          tension: 0.4,
-          pointBackgroundColor: '#ff6b6b',
-          pointRadius: 4,
-          pointHoverRadius: 6
-        }
+        { label: 'Revenus',  data: revenus,  borderColor: '#00e5a0', backgroundColor: 'rgba(0,229,160,0.08)',   fill: true, tension: 0.4, pointBackgroundColor: '#00e5a0', pointRadius: 4, pointHoverRadius: 6 },
+        { label: 'Dépenses', data: depenses, borderColor: '#ff6b6b', backgroundColor: 'rgba(255,107,107,0.08)', fill: true, tension: 0.4, pointBackgroundColor: '#ff6b6b', pointRadius: 4, pointHoverRadius: 6 }
       ]
     },
     options: {
@@ -427,7 +487,6 @@ function buildLineChart() {
 function buildDonutChart() {
   if (!donutChartRef.value || !depensesParCat.value.length) return
   if (donutChart) { donutChart.destroy(); donutChart = null }
-
   donutChart = new Chart(donutChartRef.value, {
     type: 'doughnut',
     data: {
@@ -435,9 +494,7 @@ function buildDonutChart() {
       datasets: [{
         data: depensesParCat.value.map(c => c.total),
         backgroundColor: depensesParCat.value.map(c => c.color),
-        borderColor: '#12151f',
-        borderWidth: 2,
-        hoverOffset: 6
+        borderColor: '#12151f', borderWidth: 2, hoverOffset: 6
       }]
     },
     options: {
@@ -445,12 +502,76 @@ function buildDonutChart() {
       cutout: '68%',
       plugins: {
         ...chartDefaults.plugins,
-        tooltip: {
-          ...chartDefaults.plugins.tooltip,
-          callbacks: { label: ctx => ` ${ctx.label}: ${ctx.parsed.toFixed(2)}€` }
-        }
+        tooltip: { ...chartDefaults.plugins.tooltip, callbacks: { label: ctx => ` ${ctx.label}: ${ctx.parsed.toFixed(2)}€` } }
       }
     }
+  })
+}
+
+function buildSoldeChart() {
+  if (!soldeChartRef.value || evolutionSolde.value.length < 2) return
+  if (soldeChart) { soldeChart.destroy(); soldeChart = null }
+
+  const labels = evolutionSolde.value.map(p => p.label)
+  const data   = evolutionSolde.value.map(p => p.solde)
+  const color  = soldeActuel.value >= 0 ? '#00e5a0' : '#ff6b6b'
+  const bg     = soldeActuel.value >= 0 ? 'rgba(0,229,160,0.08)' : 'rgba(255,107,107,0.08)'
+
+  soldeChart = new Chart(soldeChartRef.value, {
+    type: 'line',
+    data: {
+      labels,
+      datasets: [{
+        label: 'Solde',
+        data,
+        borderColor: color,
+        backgroundColor: bg,
+        fill: true,
+        tension: 0.35,
+        borderWidth: 2,
+        pointRadius: data.length > 30 ? 0 : 3,
+        pointHoverRadius: 5,
+        pointBackgroundColor: color
+      }]
+    },
+    options: {
+      ...chartDefaults,
+      scales: {
+        x: {
+          grid: { color: 'rgba(255,255,255,0.04)' },
+          ticks: { color: '#8892a4', font: { size: 11 }, maxTicksLimit: 8, maxRotation: 0 }
+        },
+        y: {
+          grid: { color: 'rgba(255,255,255,0.04)' },
+          ticks: { color: '#8892a4', font: { size: 11 }, callback: v => v + '€' }
+        }
+      },
+      plugins: {
+        ...chartDefaults.plugins,
+        tooltip: {
+          ...chartDefaults.plugins.tooltip,
+          callbacks: {
+            label: ctx => ` Solde : ${new Intl.NumberFormat('fr-FR', { style: 'currency', currency: 'EUR' }).format(ctx.parsed.y)}`
+          }
+        }
+      }
+    },
+    plugins: [{
+      id: 'zeroLine',
+      afterDraw(chart) {
+        const { ctx, scales: { y }, chartArea: { left, right } } = chart
+        if (!y) return
+        ctx.save()
+        ctx.beginPath()
+        ctx.setLineDash([5, 5])
+        ctx.strokeStyle = 'rgba(255,255,255,0.15)'
+        ctx.lineWidth = 1
+        ctx.moveTo(left, y.getPixelForValue(0))
+        ctx.lineTo(right, y.getPixelForValue(0))
+        ctx.stroke()
+        ctx.restore()
+      }
+    }]
   })
 }
 
@@ -468,18 +589,17 @@ function exportCSV() {
   a.click(); URL.revokeObjectURL(url)
 }
 
-function exportPDF() {
-  window.print()
-}
+function exportPDF() { window.print() }
 
 // ─── Lifecycle ────────────────────────────────────────────────────
 let unsubs = []
 
-watch([bilanMensuel, depensesParCat], async () => {
+watch([bilanMensuel, depensesParCat, evolutionSolde], async () => {
   await nextTick()
   if (hasData.value) {
     buildLineChart()
     buildDonutChart()
+    buildSoldeChart()
   }
 }, { deep: true })
 
@@ -490,6 +610,7 @@ onMounted(() => {
     if (hasData.value) {
       buildLineChart()
       buildDonutChart()
+      buildSoldeChart()
     }
   })
 })
@@ -498,6 +619,7 @@ onUnmounted(() => {
   unsubs.forEach(fn => fn && fn())
   if (lineChart)  lineChart.destroy()
   if (donutChart) donutChart.destroy()
+  if (soldeChart) soldeChart.destroy()
 })
 </script>
 
@@ -513,19 +635,19 @@ onUnmounted(() => {
 
 .empty-chart { display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px;padding:32px;color:var(--text-muted);font-size:14px;min-height:160px }
 
-.bilan-table { display:flex;flex-direction:column }
+.bilan-table  { display:flex;flex-direction:column }
 .bilan-header { display:grid;grid-template-columns:120px 1fr 1fr 1fr 200px;gap:12px;padding:10px 12px;font-size:12px;font-weight:600;color:var(--text-muted);letter-spacing:0.05em;text-transform:uppercase;border-bottom:1px solid var(--border) }
 .bilan-row    { display:grid;grid-template-columns:120px 1fr 1fr 1fr 200px;gap:12px;padding:12px;font-size:14px;align-items:center;border-bottom:1px solid var(--border);transition:background var(--transition) }
 .bilan-row:last-child { border-bottom:none }
 .bilan-row:hover { background:var(--bg-elevated);border-radius:var(--radius) }
-.bilan-mois { font-weight:600 }
+.bilan-mois     { font-weight:600 }
 .bilan-progress { display:flex;align-items:center;gap:8px }
-.bilan-bar  { height:6px;border-radius:99px;transition:width 0.6s ease }
-.bilan-pct  { font-size:12px;font-weight:700;min-width:36px;text-align:right }
+.bilan-bar      { height:6px;border-radius:99px;transition:width 0.6s ease }
+.bilan-pct      { font-size:12px;font-weight:700;min-width:36px;text-align:right }
 
-.projection-row { display:flex;align-items:center;gap:10px;margin-bottom:12px }
-.projection-label { font-size:13px;color:var(--text-secondary);width:60px;flex-shrink:0 }
-.projection-bar-wrap { flex:1 }
+.projection-row    { display:flex;align-items:center;gap:10px;margin-bottom:12px }
+.projection-label  { font-size:13px;color:var(--text-secondary);width:60px;flex-shrink:0 }
+.projection-bar-wrap  { flex:1 }
 .projection-bar-track { height:8px;background:var(--bg-elevated);border-radius:99px;overflow:hidden }
 .projection-bar-fill  { height:100%;background:linear-gradient(90deg,var(--accent),#00b4d8);border-radius:99px;transition:width 0.6s ease }
 .projection-amount { font-size:13px;font-weight:600;color:var(--accent);min-width:90px;text-align:right;flex-shrink:0 }
@@ -541,6 +663,11 @@ onUnmounted(() => {
 .insight-title { font-size:13px;font-weight:700;margin-bottom:2px }
 .insight-text  { font-size:13px;color:var(--text-secondary);line-height:1.4 }
 
-@media (max-width:768px) { .bilan-header { display:none } .bilan-row { grid-template-columns:1fr 1fr;gap:8px } .bilan-mois { grid-column:1/-1;font-size:15px } .bilan-progress { grid-column:1/-1 } }
+@media (max-width:768px) {
+  .bilan-header { display:none }
+  .bilan-row { grid-template-columns:1fr 1fr;gap:8px }
+  .bilan-mois { grid-column:1/-1;font-size:15px }
+  .bilan-progress { grid-column:1/-1 }
+}
 @media print { .btn { display:none } }
 </style>
