@@ -61,15 +61,18 @@
 <script setup>
 import { ref, watch, onMounted } from 'vue'
 import { useAuthStore } from '@/stores/auth'
+import { useThemeStore } from '@/stores/theme'
 import Sidebar from '@/components/Sidebar.vue'
 import PwaPrompt from '@/components/PwaPrompt.vue'
 import PwaUpdate from '@/components/PwaUpdate.vue'
 
-const authStore = useAuthStore()
+const authStore  = useAuthStore()
+const themeStore = useThemeStore()
 const showToast = ref(false)
 let prevAuth    = false
 
 watch(() => authStore.isAuthenticated, (isAuth) => {
+  if (isAuth) themeStore.loadCustomThemes()
   if (prevAuth && !isAuth) {
     showToast.value = true
     setTimeout(() => { showToast.value = false }, 4000)
