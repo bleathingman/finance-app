@@ -1,6 +1,6 @@
 <template>
   <div class="animate-fade-in">
-
+    <BudgetAlertesBar />
     <!-- Notification récurrents -->
     <transition name="slide-down">
       <div v-if="notifRecurrents > 0" class="notif-banner">
@@ -337,6 +337,7 @@ import { useSubscriptionStore } from '@/stores/subscription'
 import { useComptesStore } from '@/stores/comptes'
 import { processRecurringTransactions } from '@/stores/recurring'
 import { migrerTransactionsSansCompte } from '@/stores/migration'
+import BudgetAlertesBar from '@/components/BudgetAlertesBar.vue'
 
 Chart.register(...registerables)
 

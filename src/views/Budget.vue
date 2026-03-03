@@ -280,6 +280,7 @@ import { useFinanceStore } from '@/stores/finance'
 import { deleteDoc, doc, query, collection, where, onSnapshot } from 'firebase/firestore'
 import { db } from '@/firebase/config'
 import { useAuthStore } from '@/stores/auth'
+import { useBudgetAlertes } from '@/composables/useBudgetAlertes'
 
 const financeStore = useFinanceStore()
 const authStore    = useAuthStore()
@@ -377,32 +378,8 @@ const previsionFinMois = computed(() => {
   return Math.round((totalDepenseBudgete.value / jourDuMois) * joursTotal)
 })
 
-// Alertes
-const alertes = computed(() => {
-  const list = []
-  budgetsAvecStats.value.forEach(b => {
-    if (b.taux >= 100) {
-      list.push({
-        type: 'danger',
-        emoji: '🚨',
-        categorie: b.categorie,
-        title: `Budget ${b.categorie} dépassé !`,
-        text: `Vous avez dépensé ${formatAmount(b.depense)} sur ${formatAmount(b.montant)} prévus.`,
-        montant: '+' + formatAmount(Math.abs(b.reste))
-      })
-    } else if (b.taux >= 80) {
-      list.push({
-        type: 'warn',
-        emoji: '⚠️',
-        categorie: b.categorie,
-        title: `Budget ${b.categorie} presque atteint`,
-        text: `Il ne reste que ${formatAmount(b.reste)} sur votre budget de ${formatAmount(b.montant)}.`,
-        montant: b.taux + '%'
-      })
-    }
-  })
-  return list
-})
+// Alertes — centralisées dans le composable partagé
+const { alertes } = useBudgetAlertes()
 
 // ─── Actions ──────────────────────────────────────────────────────
 function editerBudget(budget) {
