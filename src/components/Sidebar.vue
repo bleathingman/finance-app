@@ -129,10 +129,10 @@
       <button class="mobile-icon-btn" @click="toggleTheme" :title="isDark ? 'Mode clair' : 'Mode sombre'">
         <span v-html="isDark ? moonIcon : sunIcon"></span>
       </button>
-      <div class="mobile-avatar" v-if="authStore.user">
+      <router-link to="/profil" class="mobile-avatar" v-if="authStore.user" title="Mon profil">
         <img v-if="authStore.user.photoURL" :src="authStore.user.photoURL" alt="avatar" />
         <span v-else>{{ userInitial }}</span>
-      </div>
+      </router-link>
     </div>
   </header>
 
@@ -591,7 +591,11 @@ const sunIcon = `<svg width="18" height="18" viewBox="0 0 24 24" fill="none">
   display: flex; align-items: center; justify-content: center;
   font-size: 13px; font-weight: 700; color: var(--accent);
   overflow: hidden;
+  text-decoration: none;
+  transition: all var(--transition);
+  cursor: pointer;
 }
+.mobile-avatar:hover { border-color: var(--accent); box-shadow: 0 0 0 2px var(--accent-dim); }
 .mobile-avatar img { width: 100%; height: 100%; object-fit: cover; }
 
 /* ═══ MOBILE DRAWER ══════════════════════════════════════ */
