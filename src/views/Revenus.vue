@@ -122,6 +122,10 @@
             <option value="recurrent">Récurrents</option>
             <option value="ponctuel">Ponctuels</option>
           </select>
+          <select v-if="allTags.length" v-model="filtreTag" class="input" style="width:auto;padding:8px 12px;font-size:13px">
+            <option value="">Tous les tags</option>
+            <option v-for="tag in allTags" :key="tag" :value="tag">#{{ tag }}</option>
+          </select>
           <div style="position:relative">
             <input v-model="recherche" type="text" class="input" placeholder="Rechercher..." style="padding-left:36px;font-size:13px;width:180px"/>
             <svg style="position:absolute;left:10px;top:50%;transform:translateY(-50%);color:var(--text-muted)" width="14" height="14" viewBox="0 0 24 24" fill="none">
@@ -148,6 +152,7 @@
               <span class="badge" :style="{ background: typeColor(r.type) + '18', color: typeColor(r.type) }">{{ r.type }}</span>
               <span v-if="r.recurrent" class="badge badge-blue">🔄 Récurrent</span>
               <span v-if="r.autoGenere" class="badge badge-blue">🤖 Auto</span>
+              <span v-for="tag in (r.tags || [])" :key="tag" class="tag-chip" @click="setFiltreTag(tag)" :class="{ active: filtreTag === tag }" title="Filtrer par ce tag">#{{ tag }}</span>
               <span style="font-size:12px;color:var(--text-muted)">{{ formatDate(r.createdAt) }}</span>
             </div>
           </div>
@@ -216,6 +221,25 @@
                 <label>Date</label>
                 <input v-model="form.date" type="date" class="input" lang="fr" required />
               </div>
+              <div class="form-group">
+                <label>Tags <span style="font-size:11px;color:var(--text-muted);font-weight:400">— optionnel, Entrée pour valider</span></label>
+                <div class="tags-input-wrap" @click="$refs.tagInputEl.focus()">
+                  <span v-for="tag in form.tags" :key="tag" class="tag-chip tag-chip-edit">
+                    #{{ tag }}
+                    <button type="button" @click.stop="removeTag(tag)">×</button>
+                  </span>
+                  <input
+                    ref="tagInputEl"
+                    v-model="tagInput"
+                    type="text"
+                    class="tags-input"
+                    placeholder="salaire, bonus..."
+                    @keydown.enter.prevent="addTag"
+                    @keydown.188.prevent="addTag"
+                    @blur="addTag"
+                  />
+                </div>
+              </div>
               <div v-if="subStore.can('multiAccounts') && comptesStore.comptes.length > 0" class="form-group">
                 <label>Compte bancaire (optionnel)</label>
                 <select class="input" v-model="form.compteId">
@@ -269,6 +293,8 @@ const submitting   = ref(false)
 const filtreType       = ref('')
 const filtreRecurrence = ref('')
 const recherche        = ref('')
+const filtreTag        = ref('')
+const tagInput         = ref('')
 
 const types = [
   { nom: 'Salaire',            emoji: '💼', color: '#00e5a0' },
@@ -280,7 +306,7 @@ const types = [
 
 const defaultForm = () => ({
   type: 'Salaire', description: '', montant: null,
-  date: new Date().toISOString().split('T')[0], recurrent: false, compteId: null
+  date: new Date().toISOString().split('T')[0], recurrent: false, compteId: null, tags: []
 })
 const form = ref(defaultForm())
 
@@ -376,11 +402,32 @@ const revenusFiltres = computed(() =>
     if (filtreType.value && r.type !== filtreType.value) return false
     if (filtreRecurrence.value === 'recurrent' && !r.recurrent) return false
     if (filtreRecurrence.value === 'ponctuel' && r.recurrent) return false
-    if (recherche.value && !r.description.toLowerCase().includes(recherche.value.toLowerCase())) return false
+    if (filtreTag.value && !(r.tags || []).includes(filtreTag.value)) return false
+    if (recherche.value) {
+      const q = recherche.value.toLowerCase()
+      const inDesc = r.description.toLowerCase().includes(q)
+      const inTags = (r.tags || []).some(t => t.includes(q))
+      if (!inDesc && !inTags) return false
+    }
     return true
   })
 )
 const totalFiltres = computed(() => revenusFiltres.value.reduce((s, r) => s + r.montant, 0))
+
+const allTags = computed(() => {
+  const set = new Set()
+  txDuMois.value.forEach(r => (r.tags || []).forEach(t => set.add(t)))
+  return [...set].sort()
+})
+
+function addTag() {
+  const val = tagInput.value.trim().toLowerCase().replace(/,+$/, '').replace(/\s+/g, '-')
+  if (!val || form.value.tags.includes(val)) { tagInput.value = ''; return }
+  form.value.tags.push(val)
+  tagInput.value = ''
+}
+function removeTag(tag) { form.value.tags = form.value.tags.filter(t => t !== tag) }
+function setFiltreTag(tag) { filtreTag.value = filtreTag.value === tag ? '' : tag }
 
 function ouvrirAjout() {
   editMode.value = false
@@ -400,7 +447,8 @@ function ouvrirEdition(revenu) {
     description: revenu.description,
     montant:     revenu.montant,
     date:        dateStr,
-    recurrent:   revenu.recurrent || false
+    recurrent:   revenu.recurrent || false,
+    tags:        revenu.tags ? [...revenu.tags] : []
   }
   showModal.value = true
 }
@@ -417,11 +465,9 @@ async function handleSauvegarder() {
   submitting.value = true
   try {
     if (editMode.value && editId.value) {
-      await financeStore.modifierRevenu(editId.value, { ...form.value })
+      await financeStore.modifierRevenu(editId.value, { ...form.value, tags: form.value.tags || [] })
     } else {
-      await financeStore.ajouterRevenu({ ...form.value ,
-        compteId: form.value.compteId || null
-      })
+      await financeStore.ajouterRevenu({ ...form.value, tags: form.value.tags || [], compteId: form.value.compteId || null })
     }
     closeModal()
   } finally { submitting.value = false }
@@ -463,4 +509,14 @@ onUnmounted(() => { if (unsub) unsub() })
 .empty-history h3 { font-family:var(--font-display) }
 .empty-history p  { color:var(--text-muted);font-size:14px }
 .preview-box { display:flex;justify-content:space-between;align-items:center;padding:12px 16px;border-radius:var(--radius);background:var(--accent-dim);border:1px solid var(--border-accent);font-size:14px;font-weight:500 }
+
+.tags-input-wrap { display:flex;flex-wrap:wrap;gap:6px;padding:8px 10px;background:var(--bg-elevated);border:1px solid var(--border);border-radius:var(--radius);min-height:44px;cursor:text;transition:border-color var(--transition) }
+.tags-input-wrap:focus-within { border-color:var(--accent) }
+.tags-input { flex:1;min-width:80px;background:none;border:none;outline:none;font-size:13px;color:var(--text-primary);font-family:var(--font-body);padding:0 }
+.tag-chip { display:inline-flex;align-items:center;gap:3px;padding:2px 8px;background:var(--accent-dim);color:var(--accent);border:1px solid var(--border-accent);border-radius:99px;font-size:11px;font-weight:600;cursor:pointer;transition:all var(--transition) }
+.tag-chip:hover,.tag-chip.active { background:var(--accent);color:#fff }
+.tag-chip-edit { cursor:default }
+.tag-chip-edit:hover { background:var(--accent-dim);color:var(--accent) }
+.tag-chip-edit button { background:none;border:none;cursor:pointer;color:inherit;font-size:15px;line-height:1;padding:0 0 0 2px;opacity:0.7 }
+.tag-chip-edit button:hover { opacity:1 }
 </style>
