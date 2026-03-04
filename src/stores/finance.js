@@ -1,7 +1,7 @@
 import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
 import {
-  collection, addDoc, deleteDoc, doc, updateDoc,
+  collection, addDoc, deleteDoc, doc, updateDoc, setDoc, getDoc,
   query, where, onSnapshot, Timestamp
 } from 'firebase/firestore'
 import { db } from '@/firebase/config'
@@ -225,10 +225,16 @@ export const useFinanceStore = defineStore('finance', () => {
     const uid = authStore.user?.uid
     if (!uid) return { depenses: 0, revenus: 0 }
 
-    const now      = new Date()
+    const now        = new Date()
     const moisActuel = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`
+    const logRef     = doc(db, 'users', uid, 'recurrents_log', moisActuel)
 
-    // Clé d'unicité : description + montant + type/categorie pour éviter les doublons
+    // ── Log des clés déjà traitées ce mois (même si la tx a été supprimée) ──
+    const logSnap  = await getDoc(logRef)
+    const logData  = logSnap.exists() ? logSnap.data() : {}
+    const dejaDep  = new Set(logData.depenses || [])
+    const dejaRev  = new Set(logData.revenus  || [])
+
     function cleDepense(d) { return `${d.description}|${d.montant}|${d.categorie}` }
     function cleRevenu(r)  { return `${r.description}|${r.montant}|${r.type}` }
 
@@ -238,17 +244,11 @@ export const useFinanceStore = defineStore('finance', () => {
       return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`
     }
 
-    // Récurrentes existantes ce mois-ci (pour éviter les doublons)
-    const depensesCeMois = depenses.value.filter(d => d.recurrent && moisKey(d) === moisActuel)
-    const revenusCeMois  = revenus.value.filter(r => r.recurrent && moisKey(r) === moisActuel)
-    const clesDep = new Set(depensesCeMois.map(cleDepense))
-    const clesRev = new Set(revenusCeMois.map(cleRevenu))
-
-    // Trouver les récurrentes les plus récentes hors mois courant
+    // Récurrentes des mois précédents → templates
     const recDepenses = depenses.value.filter(d => d.recurrent && moisKey(d) !== moisActuel)
     const recRevenus  = revenus.value.filter(r => r.recurrent && moisKey(r) !== moisActuel)
 
-    // Dédoublonner : garder la version la plus récente de chaque récurrente
+    // Garder la version la plus récente de chaque récurrente
     const latestDep = {}
     recDepenses.forEach(d => {
       const cle = cleDepense(d)
@@ -264,33 +264,32 @@ export const useFinanceStore = defineStore('finance', () => {
       }
     })
 
-    // Générer la date du 1er du mois courant
-    const dateStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-01`
-
+    const dateStr   = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-01`
+    const nouvellesDep = []
+    const nouvellesRev = []
     let nbDep = 0
     let nbRev = 0
 
-    // Créer les dépenses manquantes
     for (const [cle, d] of Object.entries(latestDep)) {
-      if (clesDep.has(cle)) continue // déjà présente ce mois
+      if (dejaDep.has(cle)) continue  // déjà traitée ce mois (même si supprimée)
       await addDoc(collection(db, 'depenses'), {
-        categorie:  d.categorie,
+        categorie:   d.categorie,
         description: d.description,
-        montant:    d.montant,
-        recurrent:  true,
-        tags:       d.tags || [],
-        date:       dateStr,
+        montant:     d.montant,
+        recurrent:   true,
+        tags:        d.tags || [],
+        date:        dateStr,
         uid,
-        compteId:   d.compteId || null,
-        autoGenere: true,
-        createdAt:  dateToTimestamp(dateStr)
+        compteId:    d.compteId || null,
+        autoGenere:  true,
+        createdAt:   dateToTimestamp(dateStr)
       })
+      nouvellesDep.push(cle)
       nbDep++
     }
 
-    // Créer les revenus manquants
     for (const [cle, r] of Object.entries(latestRev)) {
-      if (clesRev.has(cle)) continue
+      if (dejaRev.has(cle)) continue
       await addDoc(collection(db, 'revenus'), {
         type:        r.type,
         description: r.description,
@@ -303,7 +302,17 @@ export const useFinanceStore = defineStore('finance', () => {
         autoGenere:  true,
         createdAt:   dateToTimestamp(dateStr)
       })
+      nouvellesRev.push(cle)
       nbRev++
+    }
+
+    // Persister le log mis à jour
+    if (nouvellesDep.length || nouvellesRev.length) {
+      await setDoc(logRef, {
+        depenses: [...dejaDep, ...nouvellesDep],
+        revenus:  [...dejaRev, ...nouvellesRev],
+        updatedAt: Timestamp.now()
+      }, { merge: true })
     }
 
     return { depenses: nbDep, revenus: nbRev }
