@@ -124,6 +124,8 @@
       {{ currentPageLabel }}
     </div>
 
+    <NotificationsCenter />
+    
     <!-- Avatar / theme -->
     <div class="mobile-topbar-right">
       <button class="mobile-icon-btn" @click="toggleTheme" :title="isDark ? 'Mode clair' : 'Mode sombre'">
