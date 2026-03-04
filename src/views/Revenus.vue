@@ -75,7 +75,21 @@
               <span class="recurring-name">{{ r.description }}</span>
               <span class="recurring-sub">{{ r.type }}</span>
             </div>
-            <span class="amount-positive">+{{ formatAmount(r.montant) }}</span>
+            <span class="amount-positive" style="margin-left:auto">+{{ formatAmount(r.montant) }}</span>
+            <div style="display:flex;gap:4px;flex-shrink:0">
+              <button class="icon-btn" @click="ouvrirEdition(r)" title="Modifier">
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none">
+                  <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+                  <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+                </svg>
+              </button>
+              <button class="icon-btn danger" @click="financeStore.supprimerRevenu(r.id)" title="Supprimer">
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none">
+                  <polyline points="3 6 5 6 21 6" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+                  <path d="M19 6l-1 14H6L5 6M10 11v6M14 11v6M9 6V4h6v2" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                </svg>
+              </button>
+            </div>
           </div>
         </div>
       </div>
