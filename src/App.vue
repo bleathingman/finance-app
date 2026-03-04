@@ -16,6 +16,7 @@
     <!-- Authentifié -->
     <div v-if="authStore.isAuthenticated" class="app-shell">
       <Sidebar />
+      <OnboardingWizard />
       <main class="main-content">
         <router-view v-slot="{ Component }">
           <transition name="page" mode="out-in">
@@ -65,6 +66,7 @@ import { useThemeStore } from '@/stores/theme'
 import Sidebar from '@/components/Sidebar.vue'
 import PwaPrompt from '@/components/PwaPrompt.vue'
 import PwaUpdate from '@/components/PwaUpdate.vue'
+import OnboardingWizard from '@/components/OnboardingWizard.vue'
 
 const authStore  = useAuthStore()
 const themeStore = useThemeStore()
