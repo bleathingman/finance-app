@@ -2,13 +2,7 @@
   <div class="animate-fade-in">
     <BudgetAlertesBar />
     <!-- Notification récurrents -->
-    <transition name="slide-down">
-      <div v-if="notifRecurrents > 0" class="notif-banner">
-        <span>🔄</span>
-        <span><strong>{{ notifRecurrents }} transaction(s) récurrente(s)</strong> ont été ajoutées automatiquement pour {{ moisCourant }}.</span>
-        <button class="notif-close" @click="notifRecurrents = 0">✕</button>
-      </div>
-    </transition>
+    <RecurrentsNotif />
 
     <!-- Header -->
     <div class="page-header" style="display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:12px">
@@ -335,9 +329,9 @@ import { useAuthStore } from '@/stores/auth'
 import { useFinanceStore } from '@/stores/finance'
 import { useSubscriptionStore } from '@/stores/subscription'
 import { useComptesStore } from '@/stores/comptes'
-import { processRecurringTransactions } from '@/stores/recurring'
 import { migrerTransactionsSansCompte } from '@/stores/migration'
 import BudgetAlertesBar from '@/components/BudgetAlertesBar.vue'
+import RecurrentsNotif from '@/components/RecurrentsNotif.vue'
 
 Chart.register(...registerables)
 
@@ -347,7 +341,6 @@ const subStore     = useSubscriptionStore()
 const comptesStore = useComptesStore()
 const donutRef     = ref(null)
 const lineRef      = ref(null)
-const notifRecurrents = ref(0)
 let donutChart = null
 let lineChart  = null
 
@@ -612,10 +605,6 @@ onMounted(async () => {
     { immediate: true }
   )
 
-  setTimeout(async () => {
-    const nb = await processRecurringTransactions()
-    if (nb > 0) notifRecurrents.value = nb
-  }, 2000)
 
   await nextTick()
   buildDonut()
@@ -635,7 +624,6 @@ onUnmounted(() => {
 .compte-chip { padding:6px 14px;border-radius:99px;border:1px solid var(--border);background:var(--bg-elevated);cursor:pointer;font-size:12px;font-weight:600;font-family:var(--font-body);color:var(--text-secondary);transition:all var(--transition);white-space:nowrap }
 .compte-chip:hover { border-color:var(--border-accent);color:var(--text-primary) }
 .compte-chip.active { font-weight:700 }
-.notif-banner { display:flex;align-items:center;gap:10px;padding:12px 18px;margin-bottom:20px;background:rgba(79,172,254,0.1);border:1px solid rgba(79,172,254,0.25);border-radius:var(--radius);font-size:14px }
 .notif-close  { margin-left:auto;background:none;border:none;cursor:pointer;color:var(--text-muted);font-size:14px }
 .kpi-card    { display:flex;flex-direction:column;gap:4px }
 .kpi-icon    { width:36px;height:36px;border-radius:10px;display:flex;align-items:center;justify-content:center;margin-bottom:8px }
